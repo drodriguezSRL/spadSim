@@ -57,12 +57,13 @@ def extract_frames_from_video(
     # compute frame extraction interval
     step = orig_fps / target_fps
 
-    frame_idx = 0
+    frame_idx = 1
     out_paths = []
     extracted = 0
 
     # progress bar
-    pbar = tqdm(total=total_frames, desc="Extracting frames", unit='frame')
+    total = total_frames if max_frames is None else min(total_frames, max_frames)    
+    pbar = tqdm(total=total, desc="Extracting frames", unit='frame')
 
     # read and extract frames
     while True:
@@ -98,10 +99,10 @@ def extract_frames_from_video(
 
 def main():
     parser = argparse.ArgumentParser(description="Simulate binary SPAD frames from an RGB video.")
-    parser.add_argument("input_video", type=str, required=True, help="Path to the input RGB video file.")
+    parser.add_argument("input_video", type=str, help="Path to the input RGB video file.")
     parser.add_argument("--output_dir", "-o", type=str, default="s/output_dir", help="Path to the output directory for frames and metadata.")
-    parser.add_argument("--rgb_fps", type=float, default=DEFAULT_FPS, help="Target FPS for RGB frame extraction (Hz).")
-    parser.add_argument("--max_frames", type=int, default=None, help="Maximum number of RGB frames to extract (for testing).")
+    parser.add_argument("--rgb_fps", "-f", type=float, default=DEFAULT_FPS, help="Target FPS for RGB frame extraction (Hz).")
+    parser.add_argument("--max_frames", "-m", type=int, default=None, help="Maximum number of RGB frames to extract (for testing).")
 
     args = parser.parse_args()
 
@@ -117,7 +118,7 @@ def main():
         video_path=args.input_video,
         out_dir=rgb_dir,
         target_fps= args.rgb_fps,
-        max_franes = args.max_frames
+        max_frames = args.max_frames
     )
     if num_frames < 2:
         raise RuntimeError(f"At least 2 extracted RGB frames are required to generate interpolared SPAD frames.")
