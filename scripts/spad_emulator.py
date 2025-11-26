@@ -2,14 +2,16 @@
 
 """
 Implement next:
-- save_rgb flag 
-- crop RGB or SPAD to the right size already 
-- simulate SPAD frames...
+[] save_rgb flag 
+[] crop RGB or SPAD to the right size already 
+[] implement optical flow to interpolate spad frames for each rgb frame
+[] simulate SPAD frames...
 """
 
 import os
 import cv2
 import argparse
+import numpy as np
 from pathlib import Path
 from PIL import Image
 from tqdm import tqdm
@@ -38,6 +40,51 @@ def ensure_dir(p: str):
     """
     Path(p).mkdir(parents=True, exist_ok=True)
 
+def load_png_gray(p: str) -> np.ndarray:
+    """
+    Returns the grayscale (0-255) Numpy array of a PNG image
+    """
+    img = Image.open(p).convert('L') # 'L' luminance, 8bit grayscale
+    return np.array(img, dtype=np.float32) # converts from PIL image object to numpy array. float32 is needed for optical flow.
+
+def compute_farneback(
+        img0_gray: np.ndarray, 
+        img1_gray: np.ndarray
+        ) -> np.ndarray:
+    """
+    Computes Farneback Optical Flow between two images (img0 and img1)
+    Pixel movement convention: 
+    - dx > 0: pixel moved right
+    - dx < 0: pixel moved left
+    - dy > 0: pixel moved down
+    - dy < 0: pixel moved up
+    
+    Parameters:
+    - img0_gray (np.ndarray): first grayscale image as float32 [0-255]
+    - img1_gray (np.ndarray): second grayscale image as float32 [0-255]
+
+    Returns:
+    - A (H,W,2) array with (dx,dy) motion per pixel 
+    """
+    # convert to uint8 for opencv 
+    i0 = np.clip(img0_gray, 0, 255).astype(np.uint8)
+    i1 = np.clip(img1_gray, 0, 255).astype(np.uint8)
+
+    # compute optical flow
+    flow = cv2,calcOpticalFlowFarneback(
+        prev=i0, # first image 
+        next=i1, # second image
+        flow=None, # ???
+        pyr_scale=0.5, # image pyramid scale
+        levels=3, # number of pyramid levels
+        winsize=15, # window size for averaging motion
+        iterations=3, # refinement iterations per level
+        poly_n=5, poly_sigma=1.2, # polynomial expansion parameters 
+        flags=0 # default behavior
+    )
+    
+    #### LEFT IT HERE ####
+    return flow.astype(np.float32)
 
 # CORE FUNCTIONALITY
 def extract_frames_from_video(
@@ -136,7 +183,7 @@ def main():
     spad_dir = Path(out_dir) / "spad_frames"
     ensure_dir(spad_dir)
 
-    ## Extract RGB frames from input video
+    # Extract RGB frames from input video
     print('⏳Extracting RGB frames from video...')
     num_frames, rgb_paths = extract_frames_from_video(
         video_path=args.input_video,
@@ -158,6 +205,23 @@ def main():
     if n_spad_per_pair < 1:
         n_spad_per_pair = 1
     print(f"[INFO] SPAD frames per RGB interval (approx): {n_spad_per_pair}")
+
+    # Generate SPAD frames from RGB pairs
+    global_idx = 0
+    print('📸 Processing RGB pairs and generating SPAD frames...')
+    for k in tqdm(range(num_frames - 1), desc='Processing RGB pairs'):
+        # get two consecutive RGB frames
+        pathA = rgb_paths[k]
+        pathB = rgb_paths[k + 1]
+
+        # load them in grayscale
+        grayA = load_png_gray(pathA)
+        grayB = load_png_gray(pathB)
+
+        # compute flow from A to B
+        flow = compute_farneback(grayA, grayB)
+        
+        ####lef it here...####
 
 
 
