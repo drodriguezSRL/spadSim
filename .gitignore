@@ -1,0 +1,17 @@
+# video and image outputs
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.png
+*.jpg
+*.jpeg
+
+# python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# logs
+.log
