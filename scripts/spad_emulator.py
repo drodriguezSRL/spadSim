@@ -1,5 +1,12 @@
 #!/usr/bin/en python3
 
+"""
+Implement next:
+- save_rgb flag 
+- crop RGB or SPAD to the right size already 
+- simulate SPAD frames...
+"""
+
 import os
 import cv2
 import argparse
@@ -8,11 +15,21 @@ from PIL import Image
 from tqdm import tqdm
 from typing import Optional, Tuple 
 
-# CONSTANTS
+# CONSTANTS AND DEFAULT PARAMETERS
 EPSILON = 1e-9 # tolerance for floating point number comparisons
 DEFAULT_FPS = 30.0 # fallback FPS if video reports 0 or fails
 FILENAME_PAD = 6 # number of digits in frame filenames
-
+SPAD_FPS = 100 # default SPAD FPS
+SPAD_QE = 0.5 # default SPAD quantum efficiency
+PHOTONS_PER_PX = 30 # number of photons per pixel per RGB exposure at normalized intensity = 1 
+INCLUDE_DCR = False # include SPAD dark count rate in the model
+SPAD_DCR = 100.0 # default dark count rate per pixel (counts/sec)
+OPTFLOW_METHOD = "farneback" # default optical flow method
+DETECTION_THRESHOLD = 1 # detection threshold
+SAVE_RGB = True
+BITPACK = False
+DIAGNOSTIC = True # compile a diagnostic report 
+SEED = 0 # random seed (0 = random)
 
 # UTILS
 def ensure_dir(p: str):
@@ -94,25 +111,32 @@ def extract_frames_from_video(
     return extracted, out_paths 
 
 
-
-# EXTRACT RGB FRAMES FROM INPUT VIDEO
-
 def main():
     parser = argparse.ArgumentParser(description="Simulate binary SPAD frames from an RGB video.")
     parser.add_argument("input_video", type=str, help="Path to the input RGB video file.")
-    parser.add_argument("--output_dir", "-o", type=str, default="s/output_dir", help="Path to the output directory for frames and metadata.")
-    parser.add_argument("--rgb_fps", "-f", type=float, default=DEFAULT_FPS, help="Target FPS for RGB frame extraction (Hz).")
+    parser.add_argument("--output_dir", "-o", type=str, default="/output_dir", help="Path to the output directory for frames and metadata.")
+    parser.add_argument("--rgb_fps", "-rf", type=float, default=DEFAULT_FPS, help="Target FPS for RGB frame extraction (Hz).")
     parser.add_argument("--max_frames", "-m", type=int, default=None, help="Maximum number of RGB frames to extract (for testing).")
+    parser.add_argument("--spad_rate", "-sf", type=float, default=SPAD_FPS, help="SPAD frame rate (Hz)")
+    parser.add_argument("--max_photons", "-p", type=float, default=PHOTONS_PER_PX, help="Number of photons per pixel for one RGB frame when the normalized pixel intensity is maximum (i = 1).")
+    parser.add_argument("--quantum_efficiency", "-qe", type=float, default=SPAD_QE, help="Quantum efficiency (0..1)")
+    parser.add_argument("--include_dcr", "-id", type=int, default=INCLUDE_DCR, choices=[True,False], help="Include dark counts (True/False)")
+    parser.add_argument("--dcr", "-d", type=float, default=SPAD_DCR, help="Dark count rate per pixel (counts/s)")
+    parser.add_argument("--optical_flow_method", '-ofm', type=str, default=OPTFLOW_METHOD, choices=['farneback'], help="Optical flow method")
+    parser.add_argument("--save_rgb", "-s", type=bool, default=SAVE_RGB, choices=[True,False], help="Save extracted RGB frames (True/False)")
+    parser.add_argument("--seed", type=int, default=SEED, help="Random seed (0 means random)")
 
     args = parser.parse_args()
 
     # prepare output directories
     out_dir = args.output_dir
     ensure_dir(out_dir)
-    rgb_dir = os.path.join(out_dir, "rgb_frames")
+    rgb_dir = Path(out_dir) / "rgb_frames" 
     ensure_dir(rgb_dir)
+    spad_dir = Path(out_dir) / "spad_frames"
+    ensure_dir(spad_dir)
 
-    # extracting frames
+    ## Extract RGB frames from input video
     print('⏳Extracting RGB frames from video...')
     num_frames, rgb_paths = extract_frames_from_video(
         video_path=args.input_video,
@@ -123,6 +147,21 @@ def main():
     if num_frames < 2:
         raise RuntimeError(f"At least 2 extracted RGB frames are required to generate interpolared SPAD frames.")
     print(f'✅ Extracted {num_frames} frames to {rgb_dir}')
+
+    # Compute timing parameters
+    rgb_fps = float(args.rgb_fps)
+    spad_fps = float(args.spad_rate) 
+    t_rgb = 1.0/rgb_fps 
+    t_spad = 1.0/spad_fps
+
+    n_spad_per_pair = int(round(t_rgb/t_spad)) # number of SPAD frames pair RGB pair (approx)
+    if n_spad_per_pair < 1:
+        n_spad_per_pair = 1
+    print(f"[INFO] SPAD frames per RGB interval (approx): {n_spad_per_pair}")
+
+
+
+
 
 
 if __name__ == "__main__":
