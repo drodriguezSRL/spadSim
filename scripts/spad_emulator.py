@@ -71,7 +71,7 @@ def compute_farneback(
     i1 = np.clip(img1_gray, 0, 255).astype(np.uint8)
 
     # compute optical flow
-    flow = cv2,calcOpticalFlowFarneback(
+    flow = cv2.calcOpticalFlowFarneback(
         prev=i0, # first image 
         next=i1, # second image
         flow=None, # ???
@@ -82,8 +82,7 @@ def compute_farneback(
         poly_n=5, poly_sigma=1.2, # polynomial expansion parameters 
         flags=0 # default behavior
     )
-    
-    #### LEFT IT HERE ####
+
     return flow.astype(np.float32)
 
 # CORE FUNCTIONALITY
@@ -157,6 +156,35 @@ def extract_frames_from_video(
     # returns number of extracted frames and their paths
     return extracted, out_paths 
 
+def generate_spad_sequence_from_pair(
+        imgA_gray: np.ndarray,
+        imgB_gray: np.ndarray,
+        flow: np.ndarray,
+        n_spad_per_pair: int,
+        P_rgb: float, 
+        QE: float,
+        t_spad: float, 
+        t_rgb: float,
+        include_dark: bool, 
+        dark_rate: float,
+        detection_threshold: int,
+        out_dir: str, 
+        global_index_start: int,
+        rng: np.random.Generator
+        ) -> Tuple[int, Dict[str, Any]]:
+    """
+    Generate SPAD frames for a single RGB pair (A->B) and save them to disk. 
+    For this, the function interpolates intermediate frames between A and B using optical flow (flow matrix obtained using compute_farneback()) and transforms them into binary frames simulating the photon emission and detection of a SPAD camera.
+
+    Parameters:
+    - img*_gray: the two grayscale images as nparrays HxW (0-255 floats)
+    - 
+
+    Returns:
+    - A tuple containing the next global index and the diagnostics for this pair.
+    """
+
+    ####left it here...#
 
 def main():
     parser = argparse.ArgumentParser(description="Simulate binary SPAD frames from an RGB video.")
@@ -220,6 +248,24 @@ def main():
 
         # compute flow from A to B
         flow = compute_farneback(grayA, grayB)
+
+        # generate spad frames for this pair
+        next_idx, diag = generate_spad_sequence_from_pair(
+            imgA_gray=A_gray, 
+            imgB_gray=B_gray, 
+            flow=flow,
+            n_spad_per_pair=n_spad_per_pair,
+            P_rgb=args.P_rgb, 
+            QE=args.QE,
+            t_spad=t_spad, 
+            t_rgb=t_rgb,
+            include_dark=bool(args.include_dark_counts), 
+            dark_rate=args.dark_rate,
+            detection_threshold=args.detection_threshold,
+            out_dir=spad_dir, 
+            global_index_start=global_idx,
+            rng=rng
+        )
         
         ####lef it here...####
 
