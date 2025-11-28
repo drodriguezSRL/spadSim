@@ -1,0 +1,84 @@
+{
+  "pairs_processed": 9,
+  "total_spad_frames": 27,
+  "per_pair_stats": [
+    {
+      "pair_index": 0,
+      "pair_frames_generated": 3,
+      "mean_lambda_signal": 0.7601179959094161,
+      "mean_lambda_dark": 0.0,
+      "mean_lambda_total": 0.7601179959094161,
+      "mean_detection_prob_empirical": 0.5181746861924686
+    },
+    {
+      "pair_index": 1,
+      "pair_frames_generated": 3,
+      "mean_lambda_signal": 0.7602996546728633,
+      "mean_lambda_dark": 0.0,
+      "mean_lambda_total": 0.7602996546728633,
+      "mean_detection_prob_empirical": 0.5179362056261677
+    },
+    {
+      "pair_index": 2,
+      "pair_frames_generated": 3,
+      "mean_lambda_signal": 0.7601951633125067,
+      "mean_lambda_dark": 0.0,
+      "mean_lambda_total": 0.7601951633125067,
+      "mean_detection_prob_empirical": 0.5171525091444962
+    },
+    {
+      "pair_index": 3,
+      "pair_frames_generated": 3,
+      "mean_lambda_signal": 0.7598393599136507,
+      "mean_lambda_dark": 0.0,
+      "mean_lambda_total": 0.7598393599136507,
+      "mean_detection_prob_empirical": 0.5166204507776111
+    },
+    {
+      "pair_index": 4,
+      "pair_frames_generated": 3,
+      "mean_lambda_signal": 0.7590910428460201,
+      "mean_lambda_dark": 0.0,
+      "mean_lambda_total": 0.7590910428460201,
+      "mean_detection_prob_empirical": 0.5175168087681903
+    },
+    {
+      "pair_index": 5,
+      "pair_frames_generated": 3,
+      "mean_lambda_signal": 0.757828374500774,
+      "mean_lambda_dark": 0.0,
+      "mean_lambda_total": 0.757828374500774,
+      "mean_detection_prob_empirical": 0.5167561379963685
+    },
+    {
+      "pair_index": 6,
+      "pair_frames_generated": 3,
+      "mean_lambda_signal": 0.7557690148199053,
+      "mean_lambda_dark": 0.0,
+      "mean_lambda_total": 0.7557690148199053,
+      "mean_detection_prob_empirical": 0.5147825057235336
+    },
+    {
+      "pair_index": 7,
+      "pair_frames_generated": 3,
+      "mean_lambda_signal": 0.7535154485429058,
+      "mean_lambda_dark": 0.0,
+      "mean_lambda_total": 0.7535154485429058,
+      "mean_detection_prob_empirical": 0.5140489723954632
+    },
+    {
+      "pair_index": 8,
+      "pair_frames_generated": 3,
+      "mean_lambda_signal": 0.7511570285087381,
+      "mean_lambda_dark": 0.0,
+      "mean_lambda_total": 0.7511570285087381,
+      "mean_detection_prob_empirical": 0.5134568827136128
+    }
+  ],
+  "aggregate": {
+    "mean_lambda_signal": 0.7575347870029755,
+    "mean_lambda_dark": 0.0,
+    "mean_lambda_total": 0.7575347870029755,
+    "mean_detection_prob_empirical": 0.5162716843708792
+  }
+}

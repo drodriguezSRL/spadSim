@@ -8,17 +8,19 @@ Implement next:
 [x] implement optical flow 
 [x] implement warping function to interpolate spad frames for each rgb frame based on optical flow
 [x] simulate SPAD frames...
-[] diagnostics and metadata
+[x] diagnostics and metadata
+[] copy file doctring
 """
 
 import os
 import cv2
+import json
 import argparse
 import numpy as np
 from pathlib import Path
 from PIL import Image
 from tqdm import tqdm
-from typing import Optional, Tuple 
+from typing import Optional, Tuple, Dict, Any 
 
 # CONSTANTS AND DEFAULT PARAMETERS
 EPSILON = 1e-9 # tolerance for floating point number comparisons
@@ -26,7 +28,7 @@ DEFAULT_FPS = 30.0 # fallback FPS if video reports 0 or fails
 FILENAME_PAD = 6 # number of digits in frame filenames
 SPAD_FPS = 100 # default SPAD FPS
 SPAD_QE = 0.5 # default SPAD quantum efficiency
-PHOTONS_PER_PX = 30 # number of photons per pixel per RGB exposure at normalized intensity = 1 
+PHOTONS_PER_PX = 10 # number of photons per pixel per RGB exposure at normalized intensity = 1 
 INCLUDE_DCR = False # include SPAD dark count rate in the model
 SPAD_DCR = 100.0 # default dark count rate per pixel (counts/sec)
 OPTFLOW_METHOD = "farneback" # default optical flow method
@@ -206,7 +208,7 @@ def generate_spad_sequence_from_pair(
         QE: float,
         t_spad: float, 
         t_rgb: float,
-        include_dark: bool, 
+        include_dcr: bool, 
         dcr: float,
         detection_threshold: int,
         output_dir: str, 
@@ -239,7 +241,13 @@ def generate_spad_sequence_from_pair(
     h, w = imgA_gray.shape[:2]
 
     # diagnostics
-    # ...to do
+    diagnostics = {
+        'pair_frames_generated': 0,
+        'mean_lambda_signal': 0.0,
+        'mean_lambda_dark': 0.0,
+        'mean_lambda_total': 0.0,
+        'mean_detection_prob_empirical': 0.0
+    }
 
     N = n_spad_per_pair
     if N <=0:
@@ -248,7 +256,7 @@ def generate_spad_sequence_from_pair(
     # initialize accumulators for SPAD frame stats
     sum_lambda_signal = 0.0
     sum_lambda_dark = 0.0
-    sum_lamba_total = 0.0
+    sum_lambda_total = 0.0
     sum_detected = 0.0
     total_pixels = float(h*w*N)
     
@@ -274,7 +282,7 @@ def generate_spad_sequence_from_pair(
         lambda_signal = (max_photons * i_norm * QE * (t_spad/t_rgb)).astype(np.float64)
 
         # dark noise component (if enabled)
-        lambda_dark = (dcr * t_spad) if include_dark else 0.0
+        lambda_dark = (dcr * t_spad) if include_dcr else 0.0
 
         # total mean per pixel
         lambda_total = lambda_signal + lambda_dark
@@ -297,9 +305,13 @@ def generate_spad_sequence_from_pair(
         Image.fromarray(img_out).save(out_path)
 
         idx +=1
-    
-    # code diagnostics here
-    diagnostics = []
+
+    # update diagnostics
+    diagnostics['pair_frames_generated'] = N
+    diagnostics['mean_lambda_signal'] = sum_lambda_signal / max(1, N)
+    diagnostics['mean_lambda_dark'] = sum_lambda_dark / max(1, N)
+    diagnostics['mean_lambda_total'] = sum_lambda_total / max(1, N)
+    diagnostics['mean_detection_prob_empirical'] = sum_detected / max(1, N)
 
     return idx, diagnostics
 
@@ -308,7 +320,7 @@ def main():
     parser = argparse.ArgumentParser(description="Simulate binary SPAD frames from an RGB video.")
     parser.add_argument("input_video", type=str, help="Path to the input RGB video file.")
     parser.add_argument("--output_dir", "-o", type=str, default="/output_dir", help="Path to the output directory for frames and metadata.")
-    parser.add_argument("--rgb_fps", "-rf", type=float, default=DEFAULT_FPS, help="Target FPS for RGB frame extraction (Hz).")
+    parser.add_argument("--rgb_fps", "-f", type=float, default=DEFAULT_FPS, help="Target FPS for RGB frame extraction (Hz).")
     parser.add_argument("--max_frames", "-m", type=int, default=None, help="Maximum number of RGB frames to extract (for testing).")
     parser.add_argument("--spad_rate", "-sf", type=float, default=SPAD_FPS, help="SPAD frame rate (Hz)")
     parser.add_argument("--max_photons", "-p", type=float, default=PHOTONS_PER_PX, help="Number of photons per pixel for one RGB frame when the normalized pixel intensity is maximum (i = 1).")
@@ -355,12 +367,31 @@ def main():
 
     # Generate random number of photon arrivals per pixel
     if args.seed == 0:
-        rng = np.random.default_rng_()
+        rng = np.random.default_rng()
     else:
         rng = np.random.default_rng(args.seed)
 
+    # Prepare metadata
+    metadata = {
+        'input_video': args.input_video,
+        'rgb_fps': rgb_fps,
+        'spad_rate': spad_fps,
+        't_rgb': t_rgb,
+        't_spad': t_spad,
+        'n_spad_per_pair': n_spad_per_pair,
+        'P_rgb': args.max_photons,
+        'QE': args.quantum_efficiency,
+        'include_dark_counts': bool(args.include_dcr),
+        'dark_rate': args.dcr,
+        'detection_threshold': args.detection_threshold,
+        'optical_flow_method': args.optical_flow_method,
+        'save_rgb_frames': bool(args.save_rgb),
+        'seed': int(args.seed)
+    } 
+
     # Generate SPAD frames from RGB pairs
     global_idx = 0
+    all_diagnostics = []
     print('📸 Processing RGB pairs and generating SPAD frames...')
     for k in tqdm(range(num_frames - 1), desc='Processing RGB pairs'):
         # get two consecutive RGB frames
@@ -380,14 +411,14 @@ def main():
             imgB_gray=grayB, 
             flow=flow,
             n_spad_per_pair=n_spad_per_pair,
-            P_rgb=args.max_photons, 
-            QE=args.QE,
+            max_photons=args.max_photons, 
+            QE=args.quantum_efficiency,
             t_spad=t_spad, 
             t_rgb=t_rgb,
-            include_dark=bool(args.include_dcr), 
-            dark_rate=args.dcr,
+            include_dcr=bool(args.include_dcr), 
+            dcr=args.dcr,
             detection_threshold=args.detection_threshold,
-            out_dir=spad_dir, 
+            output_dir=spad_dir, 
             global_index_start=global_idx,
             rng=rng
         )
@@ -395,9 +426,36 @@ def main():
         global_idx = next_idx
         all_diagnostics.append({'pair_index': k, **diag})
 
-    # metadata and diagnostics
-    # ... to be done
-    
+    # finalize metadata 
+    metadata['total_spad_frames'] = global_idx
+    metadata_path = Path(out_dir) / 'metadata.json'
+    with open(metadata_path, 'w') as f:
+        json.dump(metadata, f, indent=2)
+
+    # finalize diagnostics
+    diagnostics_path = Path(out_dir) / 'diagnostics.json'
+    summary = {
+        'pairs_processed': len(all_diagnostics),
+        'total_spad_frames': global_idx,
+        'per_pair_stats': all_diagnostics
+    }
+    # compute aggregate stats
+    if len(all_diagnostics) > 0:
+        mean_lambda_signal = float(np.mean([d['mean_lambda_signal'] for d in all_diagnostics]))
+        mean_lambda_dark = float(np.mean([d['mean_lambda_dark'] for d in all_diagnostics]))
+        mean_lambda_total = float(np.mean([d['mean_lambda_total'] for d in all_diagnostics]))
+        mean_detection_prob = float(np.mean([d['mean_detection_prob_empirical'] for d in all_diagnostics]))
+    else:
+        mean_lambda_signal = mean_lambda_dark = mean_lambda_total = mean_detection_prob = 0.0
+    summary['aggregate'] = {
+        'mean_lambda_signal': mean_lambda_signal,
+        'mean_lambda_dark': mean_lambda_dark,
+        'mean_lambda_total': mean_lambda_total,
+        'mean_detection_prob_empirical': mean_detection_prob
+    }
+    with open(diagnostics_path, 'w') as f:
+        json.dump(summary, f, indent=2)
+
     print('✅ Done')
     print(f'📥 Metadata saved to: {metadata_path}')
     print(f'📉 Diagnostics saved to: {diagnostics_path}')
