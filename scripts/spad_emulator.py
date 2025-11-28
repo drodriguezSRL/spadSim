@@ -2,10 +2,13 @@
 
 """
 Implement next:
+[x] implement export RGB frames
 [] save_rgb flag 
 [] crop RGB or SPAD to the right size already 
-[] implement optical flow to interpolate spad frames for each rgb frame
-[] simulate SPAD frames...
+[x] implement optical flow 
+[x] implement warping function to interpolate spad frames for each rgb frame based on optical flow
+[x] simulate SPAD frames...
+[] diagnostics and metadata
 """
 
 import os
@@ -85,6 +88,44 @@ def compute_farneback(
 
     return flow.astype(np.float32)
 
+def warp_image(
+        img_gray: np.ndarray, 
+        flow: np.ndarray, 
+        alpha: float
+        ) -> np.ndarray:
+    """
+    Motion-aware image interpolation. Computes a warped version of the original image shiften along the motion vectors by a fraction 'alpha' of the total movement.
+    - alpha = 0 -> outputs = original frame
+    - alpha = 1 -> output = next frame according to the flow field
+    - alpha = 0.5 -> halfwar between the two frames (motion-interpolated)
+
+    Parameters:
+    - img_gray (np.ndarray): grayscale image to be warped as float32 [0-255]
+    - flow (np.ndarrays): optical flow matrix (field) HxWx2
+    - alpha (float): fraction of pixel warp
+
+    Returns:
+    - A (H,W,2) array with (dx,dy) motion per pixel 
+    """
+    # get image size
+    h, w = img_gray.shape[:2]
+    
+    # create a grid of pixel coordinates ("address" of each pixel)
+    xs, ys = np.meshgrid(np.arange(w, dtype=np.float32), np.arange(h, dtype=np.float32))
+
+    # compute displacements
+    dx = (alpha * flow[..., 0]).astype(np.float32) # flow[..., 0] = horizontal pixel movement (dx)
+    dy = (alpha * flow[..., 1]).astype(np.float32) # flow[..., 1] = vertical pixel movement (dy)
+
+    # compute sampling positions with forward warping via inverse mapping
+    map_x= (xs + dx).astype(np.float32)
+    map_y= (ys + dy).astype(np.float32)
+
+    # remap the image via bilinear interpolation based on the new positions defined by (map_x, map_y). Note: bilinear interpolation handles fractional pixel positions; if coordinates fall outside the image, border pixels are repeated (REPLICATE)
+    warped = cv2.remap(img_gray.astype(np.float32), map_x, map_y, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+
+    return warped
+
 # CORE FUNCTIONALITY
 def extract_frames_from_video(
         video_path: str, 
@@ -161,14 +202,14 @@ def generate_spad_sequence_from_pair(
         imgB_gray: np.ndarray,
         flow: np.ndarray,
         n_spad_per_pair: int,
-        P_rgb: float, 
+        max_photons: float, 
         QE: float,
         t_spad: float, 
         t_rgb: float,
         include_dark: bool, 
-        dark_rate: float,
+        dcr: float,
         detection_threshold: int,
-        out_dir: str, 
+        output_dir: str, 
         global_index_start: int,
         rng: np.random.Generator
         ) -> Tuple[int, Dict[str, Any]]:
@@ -177,14 +218,91 @@ def generate_spad_sequence_from_pair(
     For this, the function interpolates intermediate frames between A and B using optical flow (flow matrix obtained using compute_farneback()) and transforms them into binary frames simulating the photon emission and detection of a SPAD camera.
 
     Parameters:
-    - img*_gray: the two grayscale images as nparrays HxW (0-255 floats)
-    - 
+    - img*_gray (np.ndarrays): the two grayscale images as nparrays HxW (0-255 floats)
+    - flow (np.ndarrays): optical flow matrix (field) HxWx2
+    - n_spad_per_pair (int): approximated number of SPAD frames pair RGB pair
+    - max_photons (float): number of photons per pixel (total photon flux) for one RGB frame when the normalized pixel intensity is maximum (i = 1)
+    - QE (float): quantum efficiency of the SPAD camera
+    - t_spad (float): exposure time of the SPAD camera (in sec)
+    - t_rgb (float): exposure time of the RGB camera (in sec)
+    - include_dcr (bool): whether to include dark counts 
+    - dcr (float): dark counts per seconds per pixel
+    - detection_threshold (int): minimum number of photons that must be detected for a bright pixel (>=1)
+    - output_dir (str): output directory for saving the generated SPAD frames
+    - global_index_start (int): starting global numbering for all SPAD frames
+    - rng (np.random.Generator): a numpy random number generator
 
     Returns:
-    - A tuple containing the next global index and the diagnostics for this pair.
+    - A tuple containing the next global index (int) and the diagnostics (Dict[str, Any]) for this pair.
     """
+    # store image dimensions
+    h, w = imgA_gray.shape[:2]
 
-    ####left it here...#
+    # diagnostics
+    # ...to do
+
+    N = n_spad_per_pair
+    if N <=0:
+        return global_index_start, diagnostics
+    
+    # initialize accumulators for SPAD frame stats
+    sum_lambda_signal = 0.0
+    sum_lambda_dark = 0.0
+    sum_lamba_total = 0.0
+    sum_detected = 0.0
+    total_pixels = float(h*w*N)
+    
+    # initialize index (used for naming output frames)
+    idx = global_index_start
+
+    # main loop for generation of 'N' frames between imgA and imgB
+    for j in range(N):
+        alpha = j / max(1,N) # fraction of movement in [0,1)
+
+        # motion compensated warp 
+        A_warp = warp_image(imgA_gray, flow, alpha)
+        B_warp = warp_image(imgB_gray, flow, alpha - 1.0) # warp B backwards 
+
+        # blend both warped A and B frames
+        blended = (1.0 - alpha) * A_warp + alpha * B_warp
+
+        # normalize intensity values of the blended frame
+        i_norm = np.clip(blended / 255.0, 0.0, 1.0)
+
+        # compute the EXPECTED photon arrival rate (lambda_signal)
+        # this assumes photon arrival follows a poissonian distribution
+        lambda_signal = (max_photons * i_norm * QE * (t_spad/t_rgb)).astype(np.float64)
+
+        # dark noise component (if enabled)
+        lambda_dark = (dcr * t_spad) if include_dark else 0.0
+
+        # total mean per pixel
+        lambda_total = lambda_signal + lambda_dark
+
+        # simulate ACTUAL photon arrivals per pixel using Poisson noise
+        n_samples = rng.poisson(lam=lambda_total)
+
+        # threshold to get binary detection
+        bits = (n_samples >= detection_threshold).astype(np.uint8) # 0 or 1
+
+        # accumulate statistics
+        sum_lambda_signal += float(lambda_signal.mean())
+        sum_lambda_dark += float(lambda_dark)  # same for all pixels if constant dark_rate
+        sum_lambda_total += float(lambda_total.mean())
+        sum_detected += bits.mean()
+
+        # save SPAD frame to disk
+        img_out = (bits*255).astype(np.uint8)
+        out_path = Path(output_dir) / f"spad_{idx:07d}.png"
+        Image.fromarray(img_out).save(out_path)
+
+        idx +=1
+    
+    # code diagnostics here
+    diagnostics = []
+
+    return idx, diagnostics
+
 
 def main():
     parser = argparse.ArgumentParser(description="Simulate binary SPAD frames from an RGB video.")
@@ -197,6 +315,7 @@ def main():
     parser.add_argument("--quantum_efficiency", "-qe", type=float, default=SPAD_QE, help="Quantum efficiency (0..1)")
     parser.add_argument("--include_dcr", "-id", type=int, default=INCLUDE_DCR, choices=[True,False], help="Include dark counts (True/False)")
     parser.add_argument("--dcr", "-d", type=float, default=SPAD_DCR, help="Dark count rate per pixel (counts/s)")
+    parser.add_argument("--detection_threshold", "-dt", type=int, default=DETECTION_THRESHOLD, help="Detection threshold (int >=1)")
     parser.add_argument("--optical_flow_method", '-ofm', type=str, default=OPTFLOW_METHOD, choices=['farneback'], help="Optical flow method")
     parser.add_argument("--save_rgb", "-s", type=bool, default=SAVE_RGB, choices=[True,False], help="Save extracted RGB frames (True/False)")
     parser.add_argument("--seed", type=int, default=SEED, help="Random seed (0 means random)")
@@ -234,6 +353,12 @@ def main():
         n_spad_per_pair = 1
     print(f"[INFO] SPAD frames per RGB interval (approx): {n_spad_per_pair}")
 
+    # Generate random number of photon arrivals per pixel
+    if args.seed == 0:
+        rng = np.random.default_rng_()
+    else:
+        rng = np.random.default_rng(args.seed)
+
     # Generate SPAD frames from RGB pairs
     global_idx = 0
     print('📸 Processing RGB pairs and generating SPAD frames...')
@@ -251,28 +376,32 @@ def main():
 
         # generate spad frames for this pair
         next_idx, diag = generate_spad_sequence_from_pair(
-            imgA_gray=A_gray, 
-            imgB_gray=B_gray, 
+            imgA_gray=grayA, 
+            imgB_gray=grayB, 
             flow=flow,
             n_spad_per_pair=n_spad_per_pair,
-            P_rgb=args.P_rgb, 
+            P_rgb=args.max_photons, 
             QE=args.QE,
             t_spad=t_spad, 
             t_rgb=t_rgb,
-            include_dark=bool(args.include_dark_counts), 
-            dark_rate=args.dark_rate,
+            include_dark=bool(args.include_dcr), 
+            dark_rate=args.dcr,
             detection_threshold=args.detection_threshold,
             out_dir=spad_dir, 
             global_index_start=global_idx,
             rng=rng
         )
-        
-        ####lef it here...####
 
+        global_idx = next_idx
+        all_diagnostics.append({'pair_index': k, **diag})
 
-
-
-
+    # metadata and diagnostics
+    # ... to be done
+    
+    print('✅ Done')
+    print(f'📥 Metadata saved to: {metadata_path}')
+    print(f'📉 Diagnostics saved to: {diagnostics_path}')
+    print(f'🔥 Total SPAD frames written: {global_idx} (to directory: {spad_dir})')
 
 if __name__ == "__main__":
     main()
