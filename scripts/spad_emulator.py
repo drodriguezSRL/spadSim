@@ -1,15 +1,40 @@
 #!/usr/bin/en python3
 
-"""
-Implement next:
+"""spad_emulator.py
+
+Simulate binary SPAD frames from an input RGB video using optical-flow interpolation
+and a Poisson photon detection model.
+
+Usage (example):
+    python spad_emulator.py input.mp4 --output_dir output_spad --rgb_fps 30 
+
+Dependencies:
+    - numpy
+    - opencv-python (cv2)
+    - pillow (PIL)
+    - tqdm
+
+The script will:
+  1. Extract RGB frames from the input video at `rgb_fps` (optional to keep them).
+  2. For each consecutive RGB image pair, compute Farneback optical flow and
+     generate N_spad = round(spad_rate / rgb_fps) SPAD binary frames by
+     motion-compensated warping + linear blending at intermediate time fractions.
+  3. Convert blended intensity to expected photon counts using P_rgb and QE,
+     add optional dark counts, sample Poisson counts and threshold to binary.
+  4. Save all binary SPAD frames as single-channel PNGs (0 or 255) into a single
+     folder, and save metadata.json and diagnostics.json.
+
+To-implement next:
 [x] implement export RGB frames
 [] save_rgb flag 
-[] crop RGB or SPAD to the right size already 
+[] crop RGB or SPAD to the right size already
+[] if no rgb_fps input, instead of 30 used video's recorded fps 
 [x] implement optical flow 
 [x] implement warping function to interpolate spad frames for each rgb frame based on optical flow
 [x] simulate SPAD frames...
 [x] diagnostics and metadata
-[] copy file doctring
+[] write README
+[] improve photon flux estimation
 """
 
 import os
