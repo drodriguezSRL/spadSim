@@ -124,7 +124,7 @@ def warp_image(
     Motion-aware image interpolation. Computes a warped version of the original image shiften along the motion vectors by a fraction 'alpha' of the total movement.
     - alpha = 0 -> outputs = original frame
     - alpha = 1 -> output = next frame according to the flow field
-    - alpha = 0.5 -> halfwar between the two frames (motion-interpolated)
+    - alpha = 0.5 -> halfwaybetween the two frames (motion-interpolated)
 
     Parameters:
     - img_gray (np.ndarray): grayscale image to be warped as float32 [0-255]
