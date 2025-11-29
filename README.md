@@ -40,26 +40,29 @@ python -m pydoc scripts/spad_emulator
 
 This repository contains `spad_emulator.py`, a script that simulates the acquisition of **binary Single-Photon Avalanche Diode (SPAD)** frames using a standard RGB video as a reference input.
 
-The SPAD simulator models photon arrivals using poissonian statistics and simulates the ultra-fast frame rates of a SPAD by interpolating motion between RGB frames using optical flow.
+The SPAD simulator models photon arrivals using poissonian statistics and simulates the ultra-fast frame rates of a SPAD by interpolating motion between the extracted RGB frames using optical flow.
 
-A SPAD camera behaves differently from conventioanl CMOS/CCD imaging sensors. SPADs record binary frames (1-bit output) based on the detection of single photons per pixel (0: no photon, 1: photon) at ultra-fast speeds (up to 100kfps, µs-exposure per frame). 
+A SPAD camera operates differently from conventioanl CMOS/CCD imaging sensors. SPADs record binary frames (1-bit output) based on the detection of a single photon per pixel (0: no photon, 1: photon) at ultra-fast speeds (up to 100kfps, µs-exposure per frame). For more information about SPADs and how they compare to conventional cameras, I encourage you to read [this paper](https://arxiv.org/abs/2510.10597). 
 
 This simulator emulates SPAD imaging by:
 
-1. Extracting RGB frames  
+1. Extracting RGB frames from the input video 
 2. Estimating the photon flux in the image  
 3. Interpolating motion between RGB frames using optical flow  
 4. Simulating Poisson photon arrivals  
-5. Thresholding detections to define binary SPAD frames  
+5. Thresholding detections to generate a sequence of binary frames  
 
-## Scientific Model
+## Imaging Model
 
 ### 1. Computing photon flux from RGB 8-bit pixel intensity
 
-Normalized:
-```
+One of the first things we need to model is the photon flux; i.e., the total number of photons arriving to each pixel at any given time. Ideally, we should know the total number of photons emitted by a scene per second. This way the photon flux could be calcualted by simply dividing this number by the pixel active surface area. However, estimating total photon emissions in a scene is non-trivial. Instead, I have simplified this estimation by first normalizing the intensity values of each pixel in the RGB frames:
+
+```math
 i(x,y) = I(x,y) / 255
 ```
+**The Cauchy-Schwarz Inequality**\
+$$\left( \sum_{k=1}^n a_k b_k \right)^2 \leq \left( \sum_{k=1}^n a_k^2 \right) \left( \sum_{k=1}^n b_k^2 \right)$$
 
 `P_rgb` controls how many photons arrive during a full RGB exposure when intensity = 1.
 
