@@ -229,7 +229,7 @@ def generate_spad_sequence_from_pair(
         imgB_gray: np.ndarray,
         flow: np.ndarray,
         n_spad_per_pair: int,
-        max_photons: float, 
+        rgb_photons: float, 
         QE: float,
         t_spad: float, 
         t_rgb: float,
@@ -248,7 +248,7 @@ def generate_spad_sequence_from_pair(
     - img*_gray (np.ndarrays): the two grayscale images as nparrays HxW (0-255 floats)
     - flow (np.ndarrays): optical flow matrix (field) HxWx2
     - n_spad_per_pair (int): approximated number of SPAD frames pair RGB pair
-    - max_photons (float): number of photons per pixel (total photon flux) for one RGB frame when the normalized pixel intensity is maximum (i = 1)
+    - rgb_photons (float): number of photons per pixel (total photon flux) for one RGB frame when the normalized pixel intensity is maximum (i = 1)
     - QE (float): quantum efficiency of the SPAD camera
     - t_spad (float): exposure time of the SPAD camera (in sec)
     - t_rgb (float): exposure time of the RGB camera (in sec)
@@ -304,7 +304,7 @@ def generate_spad_sequence_from_pair(
 
         # compute the EXPECTED photon arrival rate (lambda_signal)
         # this assumes photon arrival follows a poissonian distribution
-        lambda_signal = (max_photons * i_norm * QE * (t_spad/t_rgb)).astype(np.float64)
+        lambda_signal = (rgb_photons * i_norm * QE * (t_spad/t_rgb)).astype(np.float64)
 
         # dark noise component (if enabled)
         lambda_dark = (dcr * t_spad) if include_dcr else 0.0
@@ -348,7 +348,7 @@ def main():
     parser.add_argument("--rgb_fps", "-f", type=float, default=DEFAULT_FPS, help="Target FPS for RGB frame extraction (Hz).")
     parser.add_argument("--max_frames", "-m", type=int, default=None, help="Maximum number of RGB frames to extract (for testing).")
     parser.add_argument("--spad_rate", "-sf", type=float, default=SPAD_FPS, help="SPAD frame rate (Hz)")
-    parser.add_argument("--max_photons", "-p", type=float, default=PHOTONS_PER_PX, help="Number of photons per pixel for one RGB frame when the normalized pixel intensity is maximum (i = 1).")
+    parser.add_argument("--rgb_photons", "-p", type=float, default=PHOTONS_PER_PX, help="Number of photons per pixel for one RGB frame when the normalized pixel intensity is maximum (i = 1).")
     parser.add_argument("--quantum_efficiency", "-qe", type=float, default=SPAD_QE, help="Quantum efficiency (0..1)")
     parser.add_argument("--include_dcr", "-id", type=int, default=INCLUDE_DCR, choices=[True,False], help="Include dark counts (True/False)")
     parser.add_argument("--dcr", "-d", type=float, default=SPAD_DCR, help="Dark count rate per pixel (counts/s)")
@@ -404,7 +404,7 @@ def main():
         't_rgb': t_rgb,
         't_spad': t_spad,
         'n_spad_per_pair': n_spad_per_pair,
-        'P_rgb': args.max_photons,
+        'rgb_photons': args.rgb_photons,
         'QE': args.quantum_efficiency,
         'include_dark_counts': bool(args.include_dcr),
         'dark_rate': args.dcr,
@@ -436,7 +436,7 @@ def main():
             imgB_gray=grayB, 
             flow=flow,
             n_spad_per_pair=n_spad_per_pair,
-            max_photons=args.max_photons, 
+            rgb_photons=args.rgb_photons, 
             QE=args.quantum_efficiency,
             t_spad=t_spad, 
             t_rgb=t_rgb,

@@ -56,15 +56,16 @@ This simulator emulates SPAD imaging by:
 
 ### 1. Computing photon flux from RGB 8-bit pixel intensity
 
-One of the first things we need to model is the photon flux; i.e., the total number of photons arriving to each pixel at any given time. Ideally, we should know the total number of photons emitted by a scene per second. This way the photon flux could be calcualted by simply dividing this number by the pixel active surface area. However, estimating total photon emissions in a scene is non-trivial. Instead, I have simplified this estimation by first normalizing the intensity values of each pixel in the RGB frames:
+One of the first things we need to model is the photon flux; i.e., the total number of photons arriving to each pixel at any given time. Ideally, we should know the total number of photons emitted by a scene per second. This way the photon flux could be calcualted by simply dividing this number by the pixel active surface area. However, estimating total photon emissions in a scene is non-trivial. Instead, I have simplified this estimation via photon-count scaling by first normalizing the **intensity values of each pixel** (`I(x,y)`) in the RGB frames:
 
 ```math
 i(x,y) = I(x,y) / 255
 ```
-**The Cauchy-Schwarz Inequality**\
-$$\left( \sum_{k=1}^n a_k b_k \right)^2 \leq \left( \sum_{k=1}^n a_k^2 \right) \left( \sum_{k=1}^n b_k^2 \right)$$
 
-`P_rgb` controls how many photons arrive during a full RGB exposure when intensity = 1.
+And then defining a high-level, user-friendly parameter, `rgb_photons`, that represents how many signal photons are collected by a single pixel during a full RGB exposure when than pixel has `i=1` (i.e., `I=255` = white/saturated pixel). This way the user can control and define the overall brightness of the scene. 
+
+![WARNING]
+> This is a simplification that's dependent on the light sensitivity of the RGB camera used to record the input video. Scene features that aren't captured by the RGB camera (e.g., clipped shadows and highlights) won't show up in the binary frames, even if, in reality, a SPAD camera may be capable of resolving those same features due to its enhanced sensitivity. 
 
 ## 2. Optical Flow Interpolation
 
