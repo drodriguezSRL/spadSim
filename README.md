@@ -62,10 +62,23 @@ One of the first things we need to model is the photon flux; i.e., the total num
 i(x,y) = I(x,y) / 255
 ```
 
-And then defining a high-level, user-friendly parameter, `rgb_photons`, that represents how many signal photons are collected by a single pixel during a full RGB exposure when than pixel has `i=1` (i.e., `I=255` = white/saturated pixel). This way the user can control and define the overall brightness of the scene. 
+And then defining a high-level, user-friendly parameter called `rgb_photons` that represents how many signal photons are collected by a single pixel during a full RGB exposure when than pixel has `i=1` (i.e., `I=255` = white/saturated pixel). This way the user can control and define the overall brightness of the scene. The default value for this parameter is defined as `PHOTONS_PER_PX = 10`.
 
-![WARNING]
+>![WARNING]
 > This is a simplification that's dependent on the light sensitivity of the RGB camera used to record the input video. Scene features that aren't captured by the RGB camera (e.g., clipped shadows and highlights) won't show up in the binary frames, even if, in reality, a SPAD camera may be capable of resolving those same features due to its enhanced sensitivity. 
+
+The maximum photon flux is then defined by:
+
+```math
+\phi_{max} = \frac{\text{rgb_photons}}{t_{rgb}},
+```
+where $$t_{rgb}$$ is the exposure time per frame of the RGB input video. 
+
+Given $$i(x,y)$$ and $$\phi_{max}$$, the photon flux per pixel (photons/sec) can be computed by:
+
+```math
+\phi(x,y) = i(x,y) \phi_{max} =i(x,y)\frac{\text{rgb_photons}}{t_{rgb}}
+```
 
 ## 2. Optical Flow Interpolation
 
@@ -77,36 +90,44 @@ I(t) = (1-α)\,warp(A, αF) + α\,warp(B, (α-1)F)
 
 ## 3. Photon Arrivals (Poisson)
 
-\[
-n \sim Poisson(λ_{total})
-\]
+The arrival of photons at a single SPAD pixel can be modeled by a Poisson distribution, where the probability of a number of photons, $$k$$, reaching a pixel within an exposure window is given by:
 
-Where:
-
-\[
-λ_{signal} = P_{rgb} \cdot i \cdot QE \cdot (t_{spad}/t_{rgb})
-\]
-
-\[
-λ_{dark} = dark\_rate \cdot t_{spad}
-\]
-
-\[
-λ_{total} = λ_{signal} + λ_{dark}
-\]
-
-## 4. Binary Detection
-
-A SPAD pixel outputs:
-
+```math
+P(x=k) = \frac{\lambda^k e^{-\lambda}}{k!}.
 ```
-1  if n ≥ 1
-0  otherwise
+$$\lambda$$ defines the expected number of photons and mathematically is defined by the photon flux, $$\phi$$, the quantum efficiency of the SPAD sensor, $$\eta$$ (`SPAD_QE` in the script with a default value of 0.5), and the exposure time $$t_{spad}$$:
+
+```math
+\lambda_{signal} =  \phi \eta t_{spad} = i(x,y)\text{rgb_photons}\eta\frac{t_spad}{t_{rgb}}.
 ```
 
+An additional effect due to dark counts (false detections of photons due to thermal noise) can be included by computing:
+
+```math
+\lambda_{dcr} = DCR \cdot t_{spad}. 
+```
+
+>![NOTE]
+> A specific parameter is used to set whether dark counts should be taken into account when computing the expected number of photons per pixel: `INCLUDE_DCR`, currently set to `False`. Another parameter, `SPAD_DCR`, is used to define the average expected number of counts per second of a given SPAD sensor.   
+
+With this, the total expected number of photons is defined by:
+
+```math
+\lambda = \lambda_{total} = \lambda_{signal} + \lambda_{dcr}
+```
+
+For every pixel and every SPAD frame, the number of actual striking photons is defined by a random number obtained from the Poisson distribution with mean $$\lambda$$. This is a random number (stochastically sampled) and represents the number of photons detected during that SPAD exposure interval.
+
+## 4. Binary Detection (Thresholding)
+
+SPADs are single-photon sensitive, which means they only need to detect a single photon to trigger an avalanche in the semiconductor and be registered. 
+
+A SPAD pixel outputs, therefore, a value of 1 if $$n\geqslant 1$$ and a value of 0 otherwise.
 ---
 
-# ⚙️ Parameters
+## Script input parameters
+
+A number of parameteres can be parsed when running the simulator...
 
 | Parameter | Description | Default |
 |----------|-------------|---------|
