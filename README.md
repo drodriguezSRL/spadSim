@@ -72,14 +72,14 @@ And then defining a high-level, user-friendly parameter called `rgb_photons` tha
 The maximum photon flux is then defined by:
 
 ```math
-\phi_{max} = \frac{\text{rgb-photons}}{t_{rgb}},
+\phi_{max} = \frac{\text{*rgb-photons*}}{t_{rgb}},
 ```
 where $$t_{rgb}$$ is the exposure time per frame of the RGB input video. 
 
 Given $$i(x,y)$$ and $$\phi_{max}$$, the photon flux per pixel (photons/sec) can be computed by:
 
 ```math
-\phi(x,y) = i(x,y) \phi_{max} =i(x,y)\frac{\text{rgb_photons}}{t_{rgb}}
+\phi(x,y) = i(x,y) \phi_{max} =i(x,y)\frac{\text{*rgb-photons*}}{t_{rgb}}
 ```
 ## 2. Optical Flow Interpolation
 
@@ -114,7 +114,7 @@ P(x=k) = \frac{\lambda^k e^{-\lambda}}{k!}.
 $$\lambda$$ defines the expected number of photons and mathematically is defined by the photon flux, $$\phi$$, the quantum efficiency of the SPAD sensor, $$\eta$$ (`SPAD_QE` in the script with a default value of 0.5), and the exposure time $$t_{spad}$$:
 
 ```math
-\lambda_{signal} =  \phi \eta t_{spad} = i(x,y)\text{rgb_photons}\eta\frac{t_spad}{t_{rgb}}.
+\lambda_{signal} =  \phi \eta t_{spad} = i(x,y)\text{*rgb-photons*}\eta\frac{t_spad}{t_{rgb}}.
 ```
 
 An additional effect due to dark counts (false detections of photons due to thermal noise) can be included by computing:
@@ -200,13 +200,13 @@ These numbers help verify if the photon-count scaling (brightness-to-photon mapp
 
 | Problem | Symptoms | Potential fix | 
 |---------|----------|---------------|
-| Frames to dark (mostly zeros) | $$\lambda_{signal}$$<0.02, and detection_prob<5% | Increase `rgb_photons` or decrease `spad_rate` | 
-| Frames too bright (mostly ones) | $$\lambda$$>0.5, and detection_prob>40% | Decrease `rgb_photons` or increase `spad_rate` |
+| Frames to dark (mostly zeros) | $$\lambda_{signal}\lt 0.02$$, and detection_prob<5% | Increase `rgb_photons` or decrease `spad_rate` | 
+| Frames too bright (mostly ones) | $$\lambda\gt 0.5$$, and detection_prob>40% | Decrease `rgb_photons` or increase `spad_rate` |
 | Dark noise dominates |$$\lambda_{dark}\simeq \lambda_{signal} | increase `spad_rate` | 
 
 
-# 🔮 Future Extensions
-
+## Potential future implementations
+- [ ] something something
 - RAFT optical flow  
 - Dead time modeling  
 - Afterpulsing  
