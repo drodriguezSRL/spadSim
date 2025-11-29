@@ -66,13 +66,13 @@ i(x,y) = I(x,y) / 255
 
 And then defining a high-level, user-friendly parameter called `rgb_photons` that represents how many signal photons are collected by a single pixel during a full RGB exposure when than pixel has `i=1` (i.e., `I=255` = white/saturated pixel). This way the user can control and define the overall brightness of the scene. The default value for this parameter is defined as `PHOTONS_PER_PX = 10`.
 
->![WARNING]
+>[!IMPORTANT]
 > This is a simplification that's dependent on the light sensitivity of the RGB camera used to record the input video. Scene features that aren't captured by the RGB camera (e.g., clipped shadows and highlights) won't show up in the binary frames, even if, in reality, a SPAD camera may be capable of resolving those same features due to its enhanced sensitivity. 
 
 The maximum photon flux is then defined by:
 
 ```math
-\phi_{max} = \frac{\text{rgb_photons}}{t_{rgb}},
+\phi_{max} = \frac{\text{rgb-photons}}{t_{rgb}},
 ```
 where $$t_{rgb}$$ is the exposure time per frame of the RGB input video. 
 
@@ -101,7 +101,7 @@ The creation of intermediate frames is done in two steps.
 I_{blended}(t) = (1 - \alpha )*A_{warp} + \alpha B_{warp}
 ```
 
->![NOTE]
+>[!NOTE]
 > Currently, only Farnebäck's method is available. Other methods could be implemented (tbd).
 
 ## 3. Photon Arrivals (Poisson)
