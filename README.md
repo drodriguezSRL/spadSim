@@ -44,7 +44,7 @@ This repository contains `spad_emulator.py`, a script that simulates the acquisi
 
 The SPAD simulator models photon arrivals using poissonian statistics and simulates the ultra-fast frame rates of a SPAD by interpolating motion between the extracted RGB frames using optical flow.
 
-A SPAD camera operates differently from conventioanl CMOS/CCD imaging sensors. SPADs record binary frames (1-bit output) based on the detection of a single photon per pixel (0: no photon, 1: photon) at ultra-fast speeds (up to 100kfps, µs-exposure per frame). For more information about SPADs and how they compare to conventional cameras, I encourage you to read [this paper](https://arxiv.org/abs/2510.10597). 
+A SPAD camera operates differently from conventional CMOS/CCD imaging sensors. SPADs record binary frames (1-bit per pixel output) based on the detection of a single photon per pixel (0: no photon, 1: photon) at ultra-fast speeds (up to 100kfps, µs-exposure per frame). For more information about SPADs and how they compare to conventional cameras, I encourage you to read [this paper](https://arxiv.org/abs/2510.10597). 
 
 This simulator emulates SPAD imaging by:
 
@@ -58,13 +58,13 @@ This simulator emulates SPAD imaging by:
 
 ### 1. Computing photon flux from RGB 8-bit pixel intensity
 
-One of the first things we need to model is the photon flux; i.e., the total number of photons arriving to each pixel at any given time. Ideally, we should know the total number of photons emitted by a scene per second. This way the photon flux could be calculated by simply dividing this number by the pixel active surface area. However, estimating total photon emissions in a scene is non-trivial. Instead, I have simplified this estimation via photon-count scaling by first normalizing the **intensity values of each pixel** (`I(x,y)`) in the RGB frames:
+One of the first things we need to model is the photon flux; i.e., the total number of photons arriving to each pixel at any given time. Ideally, we should estimate the total number of photons emitted by a scene per second. This way the photon flux could be calculated by simply dividing this number by the pixel active surface area. However, estimating total photon emissions in a scene is non-trivial. Instead, I have simplified this estimation via **photon-count scaling** by first normalizing the intensity values of each pixel (`I(x,y)`) in the RGB frames:
 
 ```math
 i(x,y) = I(x,y) / 255
 ```
 
-And then defining a high-level, user-friendly parameter called `rgb_photons` that represents how many signal photons are collected by a single pixel during a full RGB exposure when than pixel has `i=1` (i.e., `I=255` = white/saturated pixel). This way the user can control and define the overall brightness of the scene. The default value for this parameter is defined as `PHOTONS_PER_PX = 10`.
+And then defining a high-level, user-defined parameter called `rgb_photons` that represents how many signal photons are collected by a single pixel during a full RGB exposure when than pixel has `i=1` (i.e., `I=255` = white/saturated pixel). This way the user can control and define the overall brightness of the scene. The default value for this parameter is defined as `PHOTONS_PER_PX = 10`.
 
 >[!IMPORTANT]
 > This is a simplification that's dependent on the light sensitivity of the RGB camera used to record the input video. Scene features that aren't captured by the RGB camera (e.g., clipped shadows and highlights) won't show up in the binary frames, even if, in reality, a SPAD camera may be capable of resolving those same features due to its enhanced sensitivity. 
@@ -72,33 +72,33 @@ And then defining a high-level, user-friendly parameter called `rgb_photons` tha
 The maximum photon flux is then defined by:
 
 ```math
-\phi_{max} = \frac{\text{*rgb-photons*}}{t_{rgb}},
+\phi_{max} = \frac{\text{rgb-photons}}{t_{rgb}},
 ```
-where $$t_{rgb}$$ is the exposure time per frame of the RGB input video. 
+where $$t_{rgb}$$ is the exposure time per frame of the input video. 
 
 Given $$i(x,y)$$ and $$\phi_{max}$$, the photon flux per pixel (photons/sec) can be computed by:
 
 ```math
-\phi(x,y) = i(x,y) \phi_{max} =i(x,y)\frac{\text{*rgb-photons*}}{t_{rgb}}
+\phi(x,y) = i(x,y) \cdot \phi_{max} =i(x,y)\cdot \frac{\text{rgb-photons}}{t_{rgb}}
 ```
 ## 2. Optical Flow Interpolation
 
 SPAD cameras are often multiple orders of magnitude faster than conventional cameras. To simulate this capability, multiple in-between frames need to be created per RGB image pair. 
 
-For this, I've implemented dense optical flow based on the [OpenCV implementation of the Gunnar Farnebäck algorithm](https://docs.opencv.org/3.4/d4/dee/tutorial_optical_flow.html) to estimate motion between two consecutive frames and interpolate new binary frames at intermediate times. Unlike sparse optical flow methods (e.g., Lukas-Kanade), [Farnebäck's method](https://link.springer.com/chapter/10.1007/3-540-45103-X_50) computes the optical flow for all points in the frame.
+For this, I have implemented dense optical flow based on the [OpenCV implementation of the Gunnar Farnebäck algorithm](https://docs.opencv.org/3.4/d4/dee/tutorial_optical_flow.html) to estimate motion between two consecutive frames and interpolate new binary frames at intermediate times. Unlike sparse optical flow methods (e.g., Lukas-Kanade), [Farnebäck's method](https://link.springer.com/chapter/10.1007/3-540-45103-X_50) computes the optical flow for all pixels in the frame.
 
 The creation of intermediate frames is done in two steps.
 
 1. Compute the flow field between the grayscale versions of two consecutive RGB frames.
 2. Perform motion-aware image interpolation by warping a version of the original images shifted along the motion vectors by a fraction `alpha` of the total movement
-    - alpha = 0 -> output = original frame
-    - alpha = 1 -> output = next frame according to the flow field
-    - alpha = 0.5 -> halfwar between the two frames (motion-interpolated)
+    - `alpha` = 0 -> output = original frame
+    - `alpha` = 1 -> output = next frame according to the flow field
+    - `alpha` = 0.5 -> halfwar between the two frames (motion-interpolated)
 
 `alpha` is computed based on the ratio of SPAD-to-RGB frames. Warping is done both ways, from imgA -> imgB and viceversa (reverse flow, in this case warped by `alpha-1`). Both warped versions are then blended to yield a spatially coherent intensity field per SPAD frame time. 
 
 ```math
-I_{blended}(t) = (1 - \alpha )*A_{warp} + \alpha B_{warp}
+I_{blended}(t) = (1 - \alpha ) A_{warp} + \alpha B_{warp}
 ```
 
 >[!NOTE]
@@ -106,15 +106,15 @@ I_{blended}(t) = (1 - \alpha )*A_{warp} + \alpha B_{warp}
 
 ## 3. Photon Arrivals (Poisson)
 
-The arrival of photons at a single SPAD pixel can be modeled by a Poisson distribution, where the probability of a number of photons, $$k$$, reaching a pixel within an exposure window is given by:
+The arrival of photons at a single SPAD pixel can be modeled by a **Poisson distribution**, where the probability of a number of photons, $$k$$, reaching a pixel within an exposure window is given by:
 
 ```math
 P(x=k) = \frac{\lambda^k e^{-\lambda}}{k!}.
 ```
-$$\lambda$$ defines the expected number of photons and mathematically is defined by the photon flux, $$\phi$$, the quantum efficiency of the SPAD sensor, $$\eta$$ (`SPAD_QE` in the script with a default value of 0.5), and the exposure time $$t_{spad}$$:
+$$\lambda$$ defines the expected number of photons and mathematically is defined by the photon flux, $$\phi$$, the quantum efficiency of the SPAD sensor, $$\eta$$ (`SPAD_QE` in the script, with a default value of `0.5`), and the exposure time $$t_{spad}$$:
 
 ```math
-\lambda_{signal} =  \phi \eta t_{spad} = i(x,y)\text{*rgb-photons*}\eta\frac{t_spad}{t_{rgb}}.
+\lambda_{signal} =  \phi \eta t_{spad} = i(x,y)\cdot \text{rgb-photons}\cdot \eta \cdot \frac{t_spad}{t_{rgb}}.
 ```
 
 An additional effect due to dark counts (false detections of photons due to thermal noise) can be included by computing:
@@ -123,7 +123,7 @@ An additional effect due to dark counts (false detections of photons due to ther
 \lambda_{dcr} = DCR \cdot t_{spad}. 
 ```
 
->![NOTE]
+>[!NOTE]
 > A specific parameter is used to set whether dark counts should be taken into account when computing the expected number of photons per pixel: `INCLUDE_DCR`, currently set to `False`. Another parameter, `SPAD_DCR`, is used to define the average expected number of counts per second of a given SPAD sensor.   
 
 With this, the total expected number of photons is defined by:
@@ -132,7 +132,7 @@ With this, the total expected number of photons is defined by:
 \lambda = \lambda_{total} = \lambda_{signal} + \lambda_{dcr}
 ```
 
-For every pixel and every SPAD frame, the number of actual striking photons is defined by a random number obtained from the Poisson distribution with mean $$\lambda$$. This is a random number (stochastically sampled) and represents the number of photons detected during that SPAD exposure interval.
+For every pixel and every SPAD frame, the number of actual striking photons is defined by a random number drawn from the Poisson distribution with mean $$\lambda$$. This is a random number (stochastically sampled) and represents the number of photons detected during that SPAD exposure interval.
 
 ### Typical SPAD operation regimes
 
@@ -148,7 +148,6 @@ For every pixel and every SPAD frame, the number of actual striking photons is d
 SPADs are single-photon sensitive, which means they only need to detect a single photon to trigger an avalanche in the semiconductor and be registered. 
 
 A SPAD pixel outputs, therefore, a value of 1 if $$n\geqslant 1$$ and a value of 0 otherwise.
----
 
 ## Script input parameters
 
@@ -182,16 +181,16 @@ python spad_emulator.py input.mp4 --output_dir spad_frames --spad_rate 10000 --i
 For sanity checking after processing each RGB pair into SPAD frames, the following will be computed and saved in a `diagnostics.json` file:
 
 - Pair index
-- Mean signal photon rate $$\lambda_{signal}$$ across all pixels and SPAD frames: averageexpected number of detected photons before thresholding per pixel for one SPAD exposure
+- Mean signal photon rate $$\lambda_{signal}$$ across all pixels and SPAD frames: averaged expected number of detected photons before thresholding per pixel for one SPAD exposure
 - Mean dark count rate $$\lambda_{dark}$$ (if enabled)
 - Mean total $$\lambda$$  
-- Empirical mean detection probability per pixel: actual fraction of pixels that fire in the binary frame
+- Empirical mean detection probability per pixel, $$P(x=1)$$: actual fraction of pixels that fire in the binary frame
 
->![NOTE]
+>[!NOTE]
 >The detection probability is based on the poisson statistics previously defined:
 >
 >```math
->P(x = 1) = 1 - e^{-\lambda}
+>P(x = 1) = 1 - e^{-\lambda} = 1 - e^{-\left( i(x,y)\cdot \text{rgb-photons}\cdot \eta + DCR \right) \frac{t_spad}{t_{rgb}}}
 >````
 
 These numbers help verify if the photon-count scaling (brightness-to-photon mapping and `rgb_photons` value) produce reasonable detection rates. 
@@ -200,18 +199,18 @@ These numbers help verify if the photon-count scaling (brightness-to-photon mapp
 
 | Problem | Symptoms | Potential fix | 
 |---------|----------|---------------|
-| Frames to dark (mostly zeros) | $$\lambda_{signal}\lt 0.02$$, and detection_prob<5% | Increase `rgb_photons` or decrease `spad_rate` | 
-| Frames too bright (mostly ones) | $$\lambda\gt 0.5$$, and detection_prob>40% | Decrease `rgb_photons` or increase `spad_rate` |
-| Dark noise dominates |$$\lambda_{dark}\simeq \lambda_{signal} | increase `spad_rate` | 
+| Frames to dark (mostly zeros) | $$\lambda_{signal}\lt 0.02$$, and $$P(x=1)\lt 5\%$$ | Increase `rgb_photons` or decrease `spad_rate` | 
+| Frames too bright (mostly ones) | $$\lambda\gt 0.5$$, and $$P(x=1)\gt 40\%$$ | Decrease `rgb_photons` or increase `spad_rate` |
+| Dark noise dominates |$$\lambda_{dark}\simeq \lambda_{signal}$$ | increase `spad_rate` | 
 
 
 ## Potential future implementations
 - [ ] something something
-- RAFT optical flow  
-- Dead time modeling  
-- Afterpulsing  
-- Fill-factor models  
-- Bit-packed outputs  
+- [ ] test other optical flow methods (e.g., RAFT)  
+- [ ] dead time modeling  
+- [ ] afterpulsing  
+- [ ] fill-factor models  
+- [ ] bit-packed outputs  
 
 
 
