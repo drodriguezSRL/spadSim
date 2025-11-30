@@ -15,6 +15,8 @@ This simulator converts ordinary RGB videos into realistic SPAD-style binary pho
 - [Script input parameters](#script-input-parameters)
 - [Example](#example)
 - [Diagnostics](#diagnostics)
+- [References](#references)
+- [Licensing](#licensing)
 - [Updates](#updates)
 - [Potential future implementations](#potential-future-implementations)
 
@@ -60,7 +62,7 @@ This repository contains `spad_emulator.py`, a script that simulates the acquisi
 
 The SPAD simulator models photon arrivals using poissonian statistics and simulates the ultra-fast frame rates of a SPAD by interpolating motion between the extracted RGB frames using dense optical flow.
 
-A SPAD camera operates differently from conventional CMOS/CCD imaging sensors. SPADs record binary frames (1-bit per pixel output) based on the detection of a single photon per pixel (0: no photon, 1: photon) at ultra-fast speeds (up to 100kfps, µs-exposure per frame). For more information about SPADs and how they compare to conventional cameras, I encourage you to read [this paper](https://arxiv.org/abs/2510.10597). 
+A SPAD camera operates differently from conventional CMOS/CCD imaging sensors. SPADs record binary frames (1-bit per pixel output) based on the detection of a single photon per pixel (0: no photon, 1: photon) at ultra-fast speeds (up to 100kfps, µs-exposure per frame). For more information about SPADs and how they compare to conventional cameras, I encourage you to read [1](https://arxiv.org/abs/2510.10597). 
 
 This simulator emulates SPAD imaging by:
 
@@ -101,7 +103,7 @@ Given $$i(x,y)$$ and $$\phi_{max}$$, the photon flux per pixel (photons/sec) can
 
 SPAD cameras are often multiple orders of magnitude faster than conventional cameras. To simulate this capability, multiple in-between frames need to be created per RGB image pair. 
 
-For this, I have implemented dense optical flow based on the [OpenCV implementation of the Gunnar Farnebäck algorithm](https://docs.opencv.org/3.4/d4/dee/tutorial_optical_flow.html) to estimate motion between two consecutive frames and interpolate new binary frames at intermediate times. Unlike sparse optical flow methods (e.g., Lukas-Kanade), [Farnebäck's method](https://link.springer.com/chapter/10.1007/3-540-45103-X_50) computes the optical flow for all pixels in the frame.
+For this, I have implemented dense optical flow based on the [OpenCV implementation of the Gunnar Farnebäck algorithm](https://docs.opencv.org/3.4/d4/dee/tutorial_optical_flow.html) to estimate motion between two consecutive frames and interpolate new binary frames at intermediate times. Unlike sparse optical flow methods (e.g., Lukas-Kanade), Farnebäck's method[2](https://link.springer.com/chapter/10.1007/3-540-45103-X_50) computes the optical flow for all pixels in the frame.
 
 The creation of intermediate frames is done in two steps.
 
@@ -219,6 +221,12 @@ These numbers help verify if the photon-count scaling (brightness-to-photon mapp
 | Frames too bright (mostly ones) | $$\lambda\gt 0.5$$, and $$P(x=1)\gt 40\%$$ | Decrease `rgb_photons` or increase `spad_rate` |
 | Dark noise dominates |$$\lambda_{dark}\simeq \lambda_{signal}$$ | increase `spad_rate` | 
 
+## References
+- [1](https://arxiv.org/abs/2510.10597) Fast Vision in the Dark: A Case for Single-Photon Imaging in Planetary Navigation
+- [2](https://link.springer.com/chapter/10.1007/3-540-45103-X_50) Two-Frame Motion Estimation Based on Polynomial Expansion
+
+## Licensing 
+No public release is yet available for this repository. 
 
 ## Updates
 - (2025-Nov-30) Repository creation
