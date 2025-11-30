@@ -1,25 +1,41 @@
-# spadSim - Simulating binary SPAD frames from a standard video
+# spadSim - Simulating binary SPAD frames from a standard video <!-- omit in toc -->
 
 This simulator converts ordinary RGB videos into realistic SPAD-style binary photon frames using optical flow and poissonian statistics to model photon arrival rates.
 
+- [ ] demo video to be included here...
+
+## Contents <!-- omit in toc -->
+- [Quick setup](#quick-setup)
+- [What the simulator does](#what-the-simulator-does)
+- [Imaging Model](#imaging-model)
+  - [1. Computing photon flux from RGB 8-bit pixel intensity](#1-computing-photon-flux-from-rgb-8-bit-pixel-intensity)
+  - [2. Optical Flow Interpolation](#2-optical-flow-interpolation)
+  - [3. Photon Arrivals (Poisson)](#3-photon-arrivals-poisson)
+  - [4. Binary Detection (Thresholding)](#4-binary-detection-thresholding)
+- [Script input parameters](#script-input-parameters)
+- [Example](#example)
+- [Diagnostics](#diagnostics)
+- [Updates](#updates)
+- [Potential future implementations](#potential-future-implementations)
+
 ## Quick setup
 
-### 1. Clone repo
+### 1. Clone repo <!-- omit in toc -->
 ```
 git clone https://github.com/drodriguezSRL/spadSim
 ```
 
-### 2. Install dependencies
+### 2. Install dependencies <!-- omit in toc -->
 ```
 pip install numpy opencv-python pillow tqdm
 ```
 
-### 3. Run a quick demo of the simulator
+### 3. Run a quick demo of the simulator <!-- omit in toc -->
 ```
 python ./scripts/spad_emulator.py ./testing/demo.mp4 --output_dir testing
 ```
 
-### 4. Explore the results
+### 4. Explore the results <!-- omit in toc -->
 Inside `testing/` you will find:
 
 - `rgb_frames/` → extracted RGB video frames  
@@ -27,7 +43,7 @@ Inside `testing/` you will find:
 - `metadata.json` → simulation parameters  
 - `diagnostics.json` → photon/detection statistics  
 
-### (Optional) Access the docstring
+### (Optional) Access the docstring <!-- omit in toc -->
 The code is fully documented. You can access the docstring with:
 ```
 python -c "import scripts/spad_emulator; help(spad_emulator)"
@@ -42,7 +58,7 @@ python -m pydoc scripts/spad_emulator
 
 This repository contains `spad_emulator.py`, a script that simulates the acquisition of **binary Single-Photon Avalanche Diode (SPAD)** frames using a standard RGB video as a reference input.
 
-The SPAD simulator models photon arrivals using poissonian statistics and simulates the ultra-fast frame rates of a SPAD by interpolating motion between the extracted RGB frames using optical flow.
+The SPAD simulator models photon arrivals using poissonian statistics and simulates the ultra-fast frame rates of a SPAD by interpolating motion between the extracted RGB frames using dense optical flow.
 
 A SPAD camera operates differently from conventional CMOS/CCD imaging sensors. SPADs record binary frames (1-bit per pixel output) based on the detection of a single photon per pixel (0: no photon, 1: photon) at ultra-fast speeds (up to 100kfps, µs-exposure per frame). For more information about SPADs and how they compare to conventional cameras, I encourage you to read [this paper](https://arxiv.org/abs/2510.10597). 
 
@@ -64,10 +80,10 @@ One of the first things we need to model is the photon flux; i.e., the total num
 i(x,y) = I(x,y) / 255
 ```
 
-And then defining a high-level, user-defined parameter called `rgb_photons` that represents how many signal photons are collected by a single pixel during a full RGB exposure when than pixel has `i=1` (i.e., `I=255` = white/saturated pixel). This way the user can control and define the overall brightness of the scene. The default value for this parameter is defined as `PHOTONS_PER_PX = 10`.
+And then defining a high-level, user-defined parameter called `rgb_photons` that represents how many signal photons are collected by a single pixel during a full RGB exposure when that pixel is fully saturated (i.e., `i=1` or `I=255`). This way the user can control and define the overall brightness of the scene. The default value for this parameter is set as `PHOTONS_PER_PX = 10`.
 
 >[!IMPORTANT]
-> This is a simplification that's dependent on the light sensitivity of the RGB camera used to record the input video. Scene features that aren't captured by the RGB camera (e.g., clipped shadows and highlights) won't show up in the binary frames, even if, in reality, a SPAD camera may be capable of resolving those same features due to its enhanced sensitivity. 
+> This is a simplification dependent on the light sensitivity of the RGB camera used to record the input video. Scene features that aren't captured by the RGB camera (e.g., clipped shadows and highlights) won't show up in the binary frames, even if, in reality, a SPAD camera may be capable of resolving those same features due to its enhanced sensitivity. 
 
 The maximum photon flux is then defined by:
 
@@ -81,7 +97,7 @@ Given $$i(x,y)$$ and $$\phi_{max}$$, the photon flux per pixel (photons/sec) can
 ```math
 \phi(x,y) = i(x,y) \cdot \phi_{max} =i(x,y)\cdot \frac{\text{rgb-photons}}{t_{rgb}}
 ```
-## 2. Optical Flow Interpolation
+### 2. Optical Flow Interpolation
 
 SPAD cameras are often multiple orders of magnitude faster than conventional cameras. To simulate this capability, multiple in-between frames need to be created per RGB image pair. 
 
@@ -95,7 +111,7 @@ The creation of intermediate frames is done in two steps.
     - `alpha` = 1 -> output = next frame according to the flow field
     - `alpha` = 0.5 -> halfwar between the two frames (motion-interpolated)
 
-`alpha` is computed based on the ratio of SPAD-to-RGB frames. Warping is done both ways, from imgA -> imgB and viceversa (reverse flow, in this case warped by `alpha-1`). Both warped versions are then blended to yield a spatially coherent intensity field per SPAD frame time. 
+`alpha` is computed based on the ratio of SPAD-to-RGB frames. Warping is done both ways, from imgA -> imgB and vice versa (reverse flow, in this case warped by `alpha-1`). Both warped versions are then blended to yield a spatially coherent intensity field per SPAD frame time. 
 
 ```math
 I_{blended}(t) = (1 - \alpha ) A_{warp} + \alpha B_{warp}
@@ -104,7 +120,7 @@ I_{blended}(t) = (1 - \alpha ) A_{warp} + \alpha B_{warp}
 >[!NOTE]
 > Currently, only Farnebäck's method is available. Other methods could be implemented (tbd).
 
-## 3. Photon Arrivals (Poisson)
+### 3. Photon Arrivals (Poisson)
 
 The arrival of photons at a single SPAD pixel can be modeled by a **Poisson distribution**, where the probability of a number of photons, $$k$$, reaching a pixel within an exposure window is given by:
 
@@ -134,7 +150,7 @@ With this, the total expected number of photons is defined by:
 
 For every pixel and every SPAD frame, the number of actual striking photons is defined by a random number drawn from the Poisson distribution with mean $$\lambda$$. This is a random number (stochastically sampled) and represents the number of photons detected during that SPAD exposure interval.
 
-### Typical SPAD operation regimes
+#### Typical SPAD operation regimes <!-- omit in toc -->
 
 | $$\lambda_{signal}$$ | Regime   | Meaning |
 |----------------------|----------|---------|
@@ -143,7 +159,7 @@ For every pixel and every SPAD frame, the number of actual striking photons is d
 | 0.2 - 1.0 | Medium light | Increased detections | 
 | > 1.0 | Bright light | Nearly always detects a photon |
 
-## 4. Binary Detection (Thresholding)
+### 4. Binary Detection (Thresholding)
 
 SPADs are single-photon sensitive, which means they only need to detect a single photon to trigger an avalanche in the semiconductor and be registered. 
 
@@ -195,7 +211,7 @@ For sanity checking after processing each RGB pair into SPAD frames, the followi
 
 These numbers help verify if the photon-count scaling (brightness-to-photon mapping and `rgb_photons` value) produce reasonable detection rates. 
 
-### Troubleshooting with the diagnostics
+### Troubleshooting with the diagnostics <!-- omit in toc -->
 
 | Problem | Symptoms | Potential fix | 
 |---------|----------|---------------|
@@ -204,14 +220,20 @@ These numbers help verify if the photon-count scaling (brightness-to-photon mapp
 | Dark noise dominates |$$\lambda_{dark}\simeq \lambda_{signal}$$ | increase `spad_rate` | 
 
 
+## Updates
+- (2025-Nov-30) Repository creation
+
 ## Potential future implementations
-- [ ] something something
+- [ ] record demo video
 - [ ] test other optical flow methods (e.g., RAFT)  
 - [ ] dead time modeling  
 - [ ] afterpulsing  
 - [ ] fill-factor models  
-- [ ] bit-packed outputs  
-
+- [ ] bit-packed outputs
+- [ ] save_rgb flag 
+- [ ] crop SPADs to match resolution
+- [ ] no rgb_fps input, use video's own fps not default
+- [ ] can photon flux estimation be improved?  
 
 
 
