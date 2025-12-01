@@ -1,11 +1,11 @@
 {
-  "input_video": ".\\testing\\nova.mp4",
+  "input_video": ".\\testing\\toy.mp4",
   "rgb_fps": 30.0,
-  "spad_rate": 100.0,
+  "spad_rate": 1000.0,
   "t_rgb": 0.03333333333333333,
-  "t_spad": 0.01,
-  "n_spad_per_pair": 3,
-  "P_rgb": 10,
+  "t_spad": 0.001,
+  "n_spad_per_pair": 33,
+  "rgb_photons": 45.0,
   "QE": 0.5,
   "include_dark_counts": false,
   "dark_rate": 100.0,
@@ -13,5 +13,5 @@
   "optical_flow_method": "farneback",
   "save_rgb_frames": true,
   "seed": 0,
-  "total_spad_frames": 27
+  "total_spad_frames": 1188
 }

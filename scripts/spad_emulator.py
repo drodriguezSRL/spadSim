@@ -37,7 +37,6 @@ To-implement next:
 [] improve photon flux estimation
 """
 
-import os
 import cv2
 import json
 import argparse
