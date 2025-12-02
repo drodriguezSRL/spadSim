@@ -2,7 +2,7 @@
 
 This simulator converts ordinary RGB videos into realistic SPAD-style binary photon frames using optical flow and poissonian statistics to model photon arrival rates.
 
-- [ ] demo video to be included here...
+![Image](example.gif)
 
 ## Contents <!-- omit in toc -->
 - [Quick setup](#quick-setup)
@@ -82,7 +82,7 @@ One of the first things we need to model is the photon flux; i.e., the total num
 i(x,y) = I(x,y) / 255
 ```
 
-And then defining a high-level, user-defined parameter called `rgb_photons` that represents how many signal photons are collected by a single pixel during a full RGB exposure when that pixel is fully saturated (i.e., `i=1` or `I=255`). This way the user can control and define the overall brightness of the scene. The default value for this parameter is set as `PHOTONS_PER_PX = 10`.
+And then defining a high-level, user-defined parameter called `rgb_photons` that represents how many signal photons are collected by a single pixel during a full RGB exposure when that pixel is fully saturated (i.e., `i=1` or `I=255`). This way the user can control and define the overall brightness of the scene. The default value for this parameter is set as `PHOTONS_PER_PX = 30`.
 
 >[!IMPORTANT]
 > This is a simplification dependent on the light sensitivity of the RGB camera used to record the input video. Scene features that aren't captured by the RGB camera (e.g., clipped shadows and highlights) won't show up in the binary frames, even if, in reality, a SPAD camera may be capable of resolving those same features due to its enhanced sensitivity. 
@@ -241,7 +241,7 @@ No public release is yet available for this repository.
 - [ ] save_rgb flag 
 - [ ] crop SPADs to match resolution
 - [ ] no rgb_fps input, use video's own fps not default
-- [ ] can photon flux estimation be improved?  
+- [ ] implement radiometric model for photon flux estimation instead of rgb_photons  
 
 
 

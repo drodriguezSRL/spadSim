@@ -1,11 +1,14 @@
 # video and image outputs
-*.mp4
 *.avi
 *.mov
 *.mkv
 *.png
 *.jpg
 *.jpeg
+
+# metadata and diagnostics files
+*.json
+*.csv
 
 # python cache files
 __pycache__/
