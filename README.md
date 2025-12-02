@@ -4,6 +4,8 @@ This simulator converts ordinary RGB videos into realistic SPAD-style binary pho
 
 ![Image](example.gif)
 
+|[Image](demo.png)
+
 ## Contents <!-- omit in toc -->
 - [Quick setup](#quick-setup)
 - [What the simulator does](#what-the-simulator-does)
@@ -217,8 +219,8 @@ These numbers help verify if the photon-count scaling (brightness-to-photon mapp
 
 | Problem | Symptoms | Potential fix | 
 |---------|----------|---------------|
-| Frames to dark (mostly zeros) | $$\lambda_{signal}\lt 0.02$$, & $$P(x=1)\lt 5\%$$ | Increase `rgb_photons` or decrease `spad_rate` | 
-| Frames too bright (mostly ones) | $$\lambda\gt 0.5$$, & $$P(x=1)\gt 40\%$$ | Decrease `rgb_photons` or increase `spad_rate` |
+| Frames to dark (mostly zeros) | $$\lambda_{signal}\lt 0.02$$, & $$P(x=1)\lt 5%$$ | Increase `rgb_photons` or decrease `spad_rate` | 
+| Frames too bright (mostly ones) | $$\lambda\gt 0.5$$, & $$P(x=1)\gt 40%$$ | Decrease `rgb_photons` or increase `spad_rate` |
 | Dark noise dominates |$$\lambda_{dark}\simeq \lambda_{signal}$$ | increase `spad_rate` | 
 
 ## References

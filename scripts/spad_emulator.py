@@ -325,8 +325,9 @@ def generate_spad_sequence_from_pair(
 
         # save SPAD frame to disk
         img_out = (bits*255).astype(np.uint8)
+        img = Image.fromarray(img_out).convert("1")  # convert to true 1-bit mode
         out_path = Path(output_dir) / f"spad_{idx:07d}.png"
-        Image.fromarray(img_out).save(out_path)
+        img.save(out_path)
 
         idx +=1
 
