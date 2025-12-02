@@ -103,7 +103,7 @@ Given $$i(x,y)$$ and $$\phi_{max}$$, the photon flux per pixel (photons/sec) can
 
 SPAD cameras are often multiple orders of magnitude faster than conventional cameras. To simulate this capability, multiple in-between frames need to be created per RGB image pair. 
 
-For this, I have implemented dense optical flow based on the [OpenCV implementation of the Gunnar Farnebäck algorithm](https://docs.opencv.org/3.4/d4/dee/tutorial_optical_flow.html) to estimate motion between two consecutive frames and interpolate new binary frames at intermediate times. Unlike sparse optical flow methods (e.g., Lukas-Kanade), Farnebäck's method[2](https://link.springer.com/chapter/10.1007/3-540-45103-X_50) computes the optical flow for all pixels in the frame.
+For this, I have implemented dense optical flow based on the [OpenCV implementation of the Gunnar Farnebäck algorithm](https://docs.opencv.org/3.4/d4/dee/tutorial_optical_flow.html) to estimate motion between two consecutive frames and interpolate new binary frames at intermediate times. Unlike sparse optical flow methods (e.g., Lukas-Kanade), Farnebäck's method [[2]](https://link.springer.com/chapter/10.1007/3-540-45103-X_50) computes the optical flow for all pixels in the frame.
 
 The creation of intermediate frames is done in two steps.
 
