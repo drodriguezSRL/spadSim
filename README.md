@@ -1,6 +1,6 @@
 # spadSim - Simulating binary SPAD frames from a standard video <!-- omit in toc -->
 
-This simulator converts ordinary RGB videos into realistic SPAD-style binary photon frames using optical flow and poissonian statistics to model photon arrival rates.
+This is a small weekend(ish) hack where I've built a simulator that converts ordinary RGB videos into realistic SPAD-style binary photon frames using optical flow and poissonian statistics to model photon arrival rates. There's plenty of room for improvement (see [this section](#potential-future-implementations) as a reference) but works nicely as is. See and test for yourself 👇
 
 ![Image](example.gif)
 
