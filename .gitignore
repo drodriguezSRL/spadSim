@@ -17,3 +17,7 @@ __pycache__/
 
 # logs
 .log
+
+# testing subfolders
+/testing/rgb_frames/
+/testing/spad_frames/

@@ -4,7 +4,7 @@ This simulator converts ordinary RGB videos into realistic SPAD-style binary pho
 
 ![Image](example.gif)
 
-|[Image](demo.png)
+![Image](demo.png)
 
 ## Contents <!-- omit in toc -->
 - [Quick setup](#quick-setup)
