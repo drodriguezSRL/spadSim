@@ -219,8 +219,8 @@ These numbers help verify if the photon-count scaling (brightness-to-photon mapp
 
 | Problem | Symptoms | Potential fix | 
 |---------|----------|---------------|
-| Frames to dark (mostly zeros) | $$\lambda_{signal}\lt 0.02$$, & $$P(x=1)\lt 5%$$ | Increase `rgb_photons` or decrease `spad_rate` | 
-| Frames too bright (mostly ones) | $$\lambda\gt 0.5$$, & $$P(x=1)\gt 40%$$ | Decrease `rgb_photons` or increase `spad_rate` |
+| Frames to dark (mostly zeros) | $$\lambda_{signal}\lt 0.02$$, & $$P(x=1)\lt 5\% $$ | Increase `rgb_photons` or decrease `spad_rate` | 
+| Frames too bright (mostly ones) | $$\lambda\gt 0.5$$, & $$P(x=1)\gt 40\% $$ | Decrease `rgb_photons` or increase `spad_rate` |
 | Dark noise dominates |$$\lambda_{dark}\simeq \lambda_{signal}$$ | increase `spad_rate` | 
 
 ## References
@@ -228,7 +228,7 @@ These numbers help verify if the photon-count scaling (brightness-to-photon mapp
 - [[2]](https://link.springer.com/chapter/10.1007/3-540-45103-X_50) Two-Frame Motion Estimation Based on Polynomial Expansion
 
 ## Licensing 
-[MIT](LICENSE.txt). 
+[MIT](LICENSE.txt)
 
 ## Updates
 - (2025-Nov-30) Repository creation
