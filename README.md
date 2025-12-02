@@ -235,8 +235,9 @@ These numbers help verify if the photon-count scaling (brightness-to-photon mapp
 - (2025-Dec-02) Demo uploaded
   
 ## Potential future implementations
-- [x] record demo video
-- [ ] test other optical flow methods (e.g., RAFT)  
+- [x] record demo
+- [ ] (tbd) test other optical flow methods (e.g., RAFT)  
+- [ ] preprocess rgb frames (e.g., deblurred)
 - [ ] dead time modeling  
 - [ ] afterpulsing  
 - [ ] fill-factor models  
