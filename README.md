@@ -228,12 +228,12 @@ These numbers help verify if the photon-count scaling (brightness-to-photon mapp
 - [[2]](https://link.springer.com/chapter/10.1007/3-540-45103-X_50) Two-Frame Motion Estimation Based on Polynomial Expansion
 
 ## Licensing 
-No public release is yet available for this repository. 
+[MIT](LICENSE.txt). 
 
 ## Updates
 - (2025-Nov-30) Repository creation
 - (2025-Dec-02) Demo uploaded
-
+  
 ## Potential future implementations
 - [x] record demo video
 - [ ] test other optical flow methods (e.g., RAFT)  
