@@ -132,7 +132,7 @@ P(x=k) = \frac{\lambda^k e^{-\lambda}}{k!}.
 $$\lambda$$ defines the expected number of photons and mathematically is defined by the photon flux, $$\phi$$, the quantum efficiency of the SPAD sensor, $$\eta$$ (`SPAD_QE` in the script, with a default value of `0.5`), and the exposure time $$t_{spad}$$:
 
 ```math
-\lambda_{signal} =  \phi \eta t_{spad} = i(x,y)\cdot \text{rgb-photons}\cdot \eta \cdot \frac{t_spad}{t_{rgb}}.
+\lambda_{signal} =  \phi \eta t_{spad} = i(x,y)\cdot \text{rgb-photons}\cdot \eta \cdot \frac{t_{spad}}{t_{rgb}}.
 ```
 
 An additional effect due to dark counts (false detections of photons due to thermal noise) can be included by computing:
@@ -208,7 +208,7 @@ For sanity checking after processing each RGB pair into SPAD frames, the followi
 >The detection probability is based on the poisson statistics previously defined:
 >
 >```math
->P(x = 1) = 1 - e^{-\lambda} = 1 - e^{-\left( i(x,y)\cdot \text{rgb-photons}\cdot \eta + DCR \right) \frac{t_spad}{t_{rgb}}}
+>P(x = 1) = 1 - e^{-\lambda} = 1 - e^{-\left( i(x,y)\cdot \text{rgb-photons}\cdot \eta + DCR \right) \frac{t_{spad}}{t_{rgb}}}
 >````
 
 These numbers help verify if the photon-count scaling (brightness-to-photon mapping and `rgb_photons` value) produce reasonable detection rates. 
@@ -217,8 +217,8 @@ These numbers help verify if the photon-count scaling (brightness-to-photon mapp
 
 | Problem | Symptoms | Potential fix | 
 |---------|----------|---------------|
-| Frames to dark (mostly zeros) | $$\lambda_{signal}\lt 0.02$$, and $$P(x=1)\lt 5\%$$ | Increase `rgb_photons` or decrease `spad_rate` | 
-| Frames too bright (mostly ones) | $$\lambda\gt 0.5$$, and $$P(x=1)\gt 40\%$$ | Decrease `rgb_photons` or increase `spad_rate` |
+| Frames to dark (mostly zeros) | $$\lambda_{signal}\lt 0.02$$, & $$P(x=1)\lt 5\%$$ | Increase `rgb_photons` or decrease `spad_rate` | 
+| Frames too bright (mostly ones) | $$\lambda\gt 0.5$$, & $$P(x=1)\gt 40\%$$ | Decrease `rgb_photons` or increase `spad_rate` |
 | Dark noise dominates |$$\lambda_{dark}\simeq \lambda_{signal}$$ | increase `spad_rate` | 
 
 ## References
@@ -230,9 +230,10 @@ No public release is yet available for this repository.
 
 ## Updates
 - (2025-Nov-30) Repository creation
+- (2025-Dec-02) Demo uploaded
 
 ## Potential future implementations
-- [ ] record demo video
+- [x] record demo video
 - [ ] test other optical flow methods (e.g., RAFT)  
 - [ ] dead time modeling  
 - [ ] afterpulsing  
