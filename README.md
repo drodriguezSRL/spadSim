@@ -177,7 +177,7 @@ A number of command-line arguments can be used when running the `spad_emulator.p
 | `--rgb_fps` | `-f` | Frame extraction rate | `DEFAULT_FPS`=30 |
 | `--max_frames` | `-m` | Limit RGB frames | None |
 | `--spad_rate` | `-sf` | SPAD frame rate | `SPAD_FPS`=100 |
-| `--rgb_photons` | `-p` | Photons per RGB exposure at intensity=1 | `PHOTONS_PER_PX`=10 |
+| `--rgb_photons` | `-p` | Photons per RGB exposure at intensity=1 | `PHOTONS_PER_PX`=30 |
 | `--quantum_efficiency` | `-qe` | Quantum efficiency | `SPAD_QE`=0.5 |
 | `--include_dcr` | `-id`| Enable dark counts? | `INCLUDE_DCR`=False |
 | `--dcr` | `-d` | Dark counts per second | `SPAD_DCR`=100 |
