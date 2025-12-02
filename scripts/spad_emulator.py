@@ -52,7 +52,7 @@ DEFAULT_FPS = 30.0 # fallback FPS if video reports 0 or fails
 FILENAME_PAD = 6 # number of digits in frame filenames
 SPAD_FPS = 100 # default SPAD FPS
 SPAD_QE = 0.5 # default SPAD quantum efficiency
-PHOTONS_PER_PX = 30 # number of photons per pixel per RGB exposure at normalized intensity = 1 
+PHOTONS_PER_PX = 1000 # number of photons per pixel per RGB exposure at normalized intensity = 1 
 INCLUDE_DCR = False # include SPAD dark count rate in the model
 SPAD_DCR = 100.0 # default dark count rate per pixel (counts/sec)
 OPTFLOW_METHOD = "farneback" # default optical flow method

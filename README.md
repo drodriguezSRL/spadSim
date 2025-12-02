@@ -84,7 +84,7 @@ One of the first things we need to model is the photon flux; i.e., the total num
 i(x,y) = I(x,y) / 255
 ```
 
-And then defining a high-level, user-defined parameter called `rgb_photons` that represents how many signal photons are collected by a single pixel during a full RGB exposure when that pixel is fully saturated (i.e., `i=1` or `I=255`). This way the user can control and define the overall brightness of the scene. The default value for this parameter is set as `PHOTONS_PER_PX = 30`.
+And then defining a high-level, user-defined parameter called `rgb_photons` that represents how many signal photons are collected by a single pixel during a full RGB exposure when that pixel is fully saturated (i.e., `i=1` or `I=255`). This way the user can control and define the overall brightness of the scene. The default value for this parameter is set as `PHOTONS_PER_PX = 1000`.
 
 >[!IMPORTANT]
 > This is a simplification dependent on the light sensitivity of the RGB camera used to record the input video. Scene features that aren't captured by the RGB camera (e.g., clipped shadows and highlights) won't show up in the binary frames, even if, in reality, a SPAD camera may be capable of resolving those same features due to its enhanced sensitivity. 
@@ -179,7 +179,7 @@ A number of command-line arguments can be used when running the `spad_emulator.p
 | `--rgb_fps` | `-f` | Frame extraction rate | `DEFAULT_FPS`=30 |
 | `--max_frames` | `-m` | Limit RGB frames | None |
 | `--spad_rate` | `-sf` | SPAD frame rate | `SPAD_FPS`=100 |
-| `--rgb_photons` | `-p` | Photons per RGB exposure at intensity=1 | `PHOTONS_PER_PX`=30 |
+| `--rgb_photons` | `-p` | Photons per RGB exposure at intensity=1 | `PHOTONS_PER_PX`=1000 |
 | `--quantum_efficiency` | `-qe` | Quantum efficiency | `SPAD_QE`=0.5 |
 | `--include_dcr` | `-id`| Enable dark counts? | `INCLUDE_DCR`=False |
 | `--dcr` | `-d` | Dark counts per second | `SPAD_DCR`=100 |
