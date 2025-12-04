@@ -246,6 +246,7 @@ These numbers help verify if the photon-count scaling (brightness-to-photon mapp
 - [ ] crop SPADs to match resolution
 - [ ] no rgb_fps input, use video's own fps not default
 - [ ] implement radiometric model for photon flux estimation instead of rgb_photons  
+- [ ] input individual imgs instead of video 
 
 
 
