@@ -45,6 +45,7 @@ from pathlib import Path
 from PIL import Image
 from tqdm import tqdm
 from typing import Optional, Tuple, Dict, Any 
+from preprocess import quantize_image_bits, resize_image
 
 # CONSTANTS AND DEFAULT PARAMETERS
 EPSILON = 1e-9 # tolerance for floating point number comparisons
@@ -74,7 +75,7 @@ def load_png_gray(p: str) -> np.ndarray:
     Returns the grayscale (0-255) Numpy array of a PNG image
     """
     img = Image.open(p).convert('L') # 'L' luminance, 8bit grayscale
-    return np.array(img, dtype=np.float32) # converts from PIL image object to numpy array. float32 is needed for optical flow.
+    return np.array(img).astype(np.float32) # converts from PIL image object to numpy array. float32 is needed for optical flow.
 
 def compute_farneback(
         img0_gray: np.ndarray, 
@@ -157,7 +158,9 @@ def extract_frames_from_video(
         video_path: str, 
         out_dir: str,
         target_fps: float,
-        max_frames: Optional[int] = None
+        max_frames: Optional[int] = None,
+        quantize_bits: Optional[int] = None,
+        resize: Optional[str] = None
         ) -> Tuple[int,list]:
     """
     Extract frames from a video at a target FPS and save them as PNG images.
@@ -167,6 +170,8 @@ def extract_frames_from_video(
     - out_dir (str): Directory to save the extracted frames.
     - target_fps (float): Desired frames per second for extraction.
     - max_frames (Optional[int]): Optional maximum number of frames to extract.
+    - quantize_bits (Optional[int]): Optional number of bits per channel to quantize the frames.
+    - resize (Optional[str]): Optional size to resize the frames to before extraction.
 
     Returns:
     - A tuple containing the number of extracted frames and a list of their file paths.
@@ -205,6 +210,10 @@ def extract_frames_from_video(
             fname = f"frame_{extracted:0{FILENAME_PAD}d}.png"
             out_path = Path(out_dir) / fname # os.path.join(out_dir, fname)
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) # openCV uses BGR by default
+            if quantize_bits is not None:
+                rgb = quantize_image_bits(rgb, quantize_bits)
+            if resize is not None:
+                rgb = resize_image(rgb, resize)
             Image.fromarray(rgb).save(out_path) # directly saving with cv2.imwrite(str(out_path), frame) may be faster for high-volume extraction [to check]
             out_paths.append(out_path)
             extracted += 1
@@ -356,6 +365,8 @@ def main():
     parser.add_argument("--optical_flow_method", '-ofm', type=str, default=OPTFLOW_METHOD, choices=['farneback'], help="Optical flow method")
     parser.add_argument("--save_rgb", "-s", type=bool, default=SAVE_RGB, choices=[True,False], help="Save extracted RGB frames (True/False)")
     parser.add_argument("--seed", type=int, default=SEED, help="Random seed (0 means random)")
+    parser.add_argument("--quantize_bits", "-qb", type=int, default=None, help="Reduce RGB frames to N bits per channel before SPAD simulation (e.g. 4, 6, 2).")
+    parser.add_argument("--resize", "-rz", type=str, default=None, help="Resize RGB frames before SPAD simulation. Format: WxH (example: 320x240).")
 
     args = parser.parse_args()
 
@@ -373,7 +384,9 @@ def main():
         video_path=args.input_video,
         out_dir=rgb_dir,
         target_fps= args.rgb_fps,
-        max_frames = args.max_frames
+        max_frames = args.max_frames,
+        quantize_bits = args.quantize_bits,
+        resize = args.resize
     )
     if num_frames < 2:
         raise RuntimeError(f"At least 2 extracted RGB frames are required to generate interpolared SPAD frames.")
