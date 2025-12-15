@@ -45,7 +45,18 @@ from pathlib import Path
 from PIL import Image
 from tqdm import tqdm
 from typing import Optional, Tuple, Dict, Any 
-from preprocess import quantize_image_bits, resize_image
+import sys
+import os
+# Add project root to sys.path to allow importing spadsim
+# This assumes the script is located in <project_root>/scripts/
+project_root = Path(__file__).resolve().parent.parent
+sys.path.append(str(project_root))
+from spadsim.preprocess import (
+    quantize_image_bits,
+    resize_image,
+    apply_degradation
+)
+from spadsim.degradation.pyxel_backend import PyxelGaussianBlur
 
 # CONSTANTS AND DEFAULT PARAMETERS
 EPSILON = 1e-9 # tolerance for floating point number comparisons
@@ -160,7 +171,9 @@ def extract_frames_from_video(
         target_fps: float,
         max_frames: Optional[int] = None,
         quantize_bits: Optional[int] = None,
-        resize: Optional[str] = None
+        resize: Optional[str] = None,
+        enable_pyxel: bool = False,
+        pyxel_sigma: float = 1.5,
         ) -> Tuple[int,list]:
     """
     Extract frames from a video at a target FPS and save them as PNG images.
@@ -200,6 +213,11 @@ def extract_frames_from_video(
     total = total_frames if max_frames is None else min(total_frames, max_frames)    
     pbar = tqdm(total=total, desc="Extracting frames", unit='frame')
 
+    # Initialize degradation model
+    model = None
+    if enable_pyxel:
+        model = PyxelGaussianBlur(sigma=pyxel_sigma)
+
     # read and extract frames
     while True:
         ret, frame = cap.read()
@@ -210,6 +228,16 @@ def extract_frames_from_video(
             fname = f"frame_{extracted:0{FILENAME_PAD}d}.png"
             out_path = Path(out_dir) / fname # os.path.join(out_dir, fname)
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) # openCV uses BGR by default
+
+            # Apply Pyxel degradation if enabled
+            if enable_pyxel and model is not None:
+                rgb = model.apply(rgb)
+                # Ensure uint8 for saving + later SPAD pipeline
+                rgb = rgb - rgb.min()
+                if rgb.max() > 0:
+                    rgb = rgb / rgb.max()
+                rgb = (rgb * 255).astype(np.uint8)
+
             if quantize_bits is not None:
                 rgb = quantize_image_bits(rgb, quantize_bits)
             if resize is not None:
@@ -217,13 +245,13 @@ def extract_frames_from_video(
             Image.fromarray(rgb).save(out_path) # directly saving with cv2.imwrite(str(out_path), frame) may be faster for high-volume extraction [to check]
             out_paths.append(out_path)
             extracted += 1
+            pbar.update(1)
 
             # stop early if max_frames reached
             if max_frames is not None and extracted >= max_frames:
                 break
 
-            frame_idx += 1
-            pbar.update(1)
+        frame_idx += 1
     
     # cleanup
     pbar.close()
@@ -352,7 +380,7 @@ def generate_spad_sequence_from_pair(
 
 def main():
     parser = argparse.ArgumentParser(description="Simulate binary SPAD frames from an RGB video.")
-    parser.add_argument("input_video", type=str, help="Path to the input RGB video file.")
+    parser.add_argument("--input_video", type=str, help="Path to the input RGB video file.")
     parser.add_argument("--output_dir", "-o", type=str, default="/output_dir", help="Path to the output directory for frames and metadata.")
     parser.add_argument("--rgb_fps", "-f", type=float, default=DEFAULT_FPS, help="Target FPS for RGB frame extraction (Hz).")
     parser.add_argument("--max_frames", "-m", type=int, default=None, help="Maximum number of RGB frames to extract (for testing).")
@@ -367,8 +395,15 @@ def main():
     parser.add_argument("--seed", type=int, default=SEED, help="Random seed (0 means random)")
     parser.add_argument("--quantize_bits", "-qb", type=int, default=None, help="Reduce RGB frames to N bits per channel before SPAD simulation (e.g. 4, 6, 2).")
     parser.add_argument("--resize", "-rz", type=str, default=None, help="Resize RGB frames before SPAD simulation. Format: WxH (example: 320x240).")
+    parser.add_argument("--enable_pyxel", action="store_true", help="Apply Pyxel degradation to RGB frames before SPAD simulation")
+    parser.add_argument("--pyxel_sigma", type=float, default=1.5, help="Gaussian blur sigma for Pyxel model")
 
     args = parser.parse_args()
+
+    # Apply Pyxel degradation if enabled
+    degradation_model = None
+    if args.enable_pyxel:
+        degradation_model = PyxelGaussianBlur(sigma=args.pyxel_sigma)
 
     # prepare output directories
     out_dir = args.output_dir
@@ -386,7 +421,9 @@ def main():
         target_fps= args.rgb_fps,
         max_frames = args.max_frames,
         quantize_bits = args.quantize_bits,
-        resize = args.resize
+        resize = args.resize,
+        enable_pyxel = args.enable_pyxel,
+        pyxel_sigma = args.pyxel_sigma
     )
     if num_frames < 2:
         raise RuntimeError(f"At least 2 extracted RGB frames are required to generate interpolared SPAD frames.")
@@ -439,6 +476,9 @@ def main():
         # load them in grayscale
         grayA = load_png_gray(pathA)
         grayB = load_png_gray(pathB)
+
+        grayA = apply_degradation(grayA, model=degradation_model)
+        grayB = apply_degradation(grayB, model=degradation_model)
 
         # compute flow from A to B
         flow = compute_farneback(grayA, grayB)

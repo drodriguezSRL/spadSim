@@ -4,10 +4,11 @@ import numpy as np
 import cv2
 from PIL import Image
 from pathlib import Path
+from typing import Optional
 
 def quantize_image_bits(img_rgb: np.ndarray, bits: int) -> np.ndarray:
     """
-    Cuantización uniforme de N bits por canal.
+    Uniform quantization of N bits per channel.
     """
     if bits >= 8:
         return img_rgb
@@ -20,7 +21,7 @@ def quantize_image_bits(img_rgb: np.ndarray, bits: int) -> np.ndarray:
 
 def resize_image(img_rgb: np.ndarray, size_str: str) -> np.ndarray:
     """
-    Redimensiona la imagen a WxH, e.g. '256x256'
+    Resizes the image to WxH, e.g. '256x256'
     """
     try:
         w, h = [int(x) for x in size_str.lower().split('x')]
@@ -32,3 +33,15 @@ def resize_image(img_rgb: np.ndarray, size_str: str) -> np.ndarray:
 
 def save_image(img: np.ndarray, out_path: Path):
     Image.fromarray(img).save(out_path)
+
+def apply_degradation(
+    image: np.ndarray,
+    model: object = None
+) -> np.ndarray:
+    """
+    Apply a degradation model if provided.
+    """
+    if model is None:
+        return image
+
+    return model.apply(image)

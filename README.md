@@ -186,9 +186,18 @@ A number of command-line arguments can be used when running the `spad_emulator.p
 | `--detection_threshold` | `-dt` | Photon threshold | `DETECTION_THRESHOLD`=1 |
 | `--optical_flow_method` | `-ofm`| Optical flow method | `OPTFLWO_METHOD`=`farneback`|
 | `--save_rgb` | `-s`| Save extracted RGB | `SAVE_RGB`=False|
+| `--quantize_bits` | `-qb`| Quantize RGB to N bits/channel | None |
+| `--resize` | `-rz`| Resize input frames (WxH) | None |
 | `--seed` | n.a. | RNG seed | `SEED`=0 |
 
 The value of these arguments, incuding exposure times for both RGB and SPAD frames, are saved after execution on a `metadata.json` file in the same output directory.
+
+### Preprocessing Options <!-- omit in toc -->
+
+You can preprocess the input RGB frames before simulation to mimic specific sensor constraints:
+
+- **Resize** (`--resize WxH`): Resizes the input video frames to a specific resolution (e.g., `320x240`). This is useful for simulating lower-resolution sensors or speeding up the optical flow computation.
+- **Bit Quantization** (`--quantize_bits N`): Reduces the color depth of the RGB frames to N bits per channel (e.g., `--quantize_bits 4` results in $2^4=16$ levels per channel). This simulates hardware with limited bit-depth or ADC precision.
 
 ## Example 
 
