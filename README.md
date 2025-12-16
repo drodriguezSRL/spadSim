@@ -14,6 +14,8 @@ This is a small weekend(ish) hack where I've built a simulator that converts ord
   - [2. Optical Flow Interpolation](#2-optical-flow-interpolation)
   - [3. Photon Arrivals (Poisson)](#3-photon-arrivals-poisson)
   - [4. Binary Detection (Thresholding)](#4-binary-detection-thresholding)
+- [Aditional sensor options](#aditional-sensor-options)
+  - [RGB Sensor Degradation Model](#rgb-sensor-degradation-model)
 - [Script input parameters](#script-input-parameters)
 - [Example](#example)
 - [Diagnostics](#diagnostics)
@@ -33,6 +35,11 @@ git clone https://github.com/drodriguezSRL/spadSim
 ```
 pip install numpy opencv-python pillow tqdm
 ```
+Optional (for physics-based sensor degradation using Pyxel):
+```
+pip install pyxel-sim[all]
+```
+> If Pyxel is not installed, the simulator will still run, but Pyxel-based degradations (Gaussian blur, photon noise, dark current at RGB level) will be unavailable.
 
 ### 3. Run a quick demo of the simulator <!-- omit in toc -->
 ```
@@ -156,12 +163,12 @@ For every pixel and every SPAD frame, the number of actual striking photons is d
 
 #### Typical SPAD operation regimes <!-- omit in toc -->
 
-| $$\lambda_{signal}$$ | Regime   | Meaning |
-|----------------------|----------|---------|
-| 0.001 - 0.02 | Extremely low light | Almost no detections | 
-| 0.02 - 0.2 | Photon-limited | Good for SPAD experiments |
-| 0.2 - 1.0 | Medium light | Increased detections | 
-| > 1.0 | Bright light | Nearly always detects a photon |
+| $$\lambda_{signal}$$ | Regime              | Meaning                        |
+| -------------------- | ------------------- | ------------------------------ |
+| 0.001 - 0.02         | Extremely low light | Almost no detections           |
+| 0.02 - 0.2           | Photon-limited      | Good for SPAD experiments      |
+| 0.2 - 1.0            | Medium light        | Increased detections           |
+| > 1.0                | Bright light        | Nearly always detects a photon |
 
 ### 4. Binary Detection (Thresholding)
 
@@ -169,28 +176,7 @@ SPADs are single-photon sensitive, which means they only need to detect a single
 
 A SPAD pixel outputs, therefore, a value of 1 if $$n\geqslant 1$$ and a value of 0 otherwise.
 
-## Script input parameters
-
-A number of command-line arguments can be used when running the `spad_emulator.py` script. 
-
-| Argument | Short | Description | Default |
-|----------|-------|-------------|---------|
-| `--output_dir` | `-o` | Output directory | `\output_dir` |
-| `--rgb_fps` | `-f` | Frame extraction rate | `DEFAULT_FPS`=30 |
-| `--max_frames` | `-m` | Limit RGB frames | None |
-| `--spad_rate` | `-sf` | SPAD frame rate | `SPAD_FPS`=100 |
-| `--rgb_photons` | `-p` | Photons per RGB exposure at intensity=1 | `PHOTONS_PER_PX`=1000 |
-| `--quantum_efficiency` | `-qe` | Quantum efficiency | `SPAD_QE`=0.5 |
-| `--include_dcr` | `-id`| Enable dark counts? | `INCLUDE_DCR`=False |
-| `--dcr` | `-d` | Dark counts per second | `SPAD_DCR`=100 |
-| `--detection_threshold` | `-dt` | Photon threshold | `DETECTION_THRESHOLD`=1 |
-| `--optical_flow_method` | `-ofm`| Optical flow method | `OPTFLWO_METHOD`=`farneback`|
-| `--save_rgb` | `-s`| Save extracted RGB | `SAVE_RGB`=False|
-| `--quantize_bits` | `-qb`| Quantize RGB to N bits/channel | None |
-| `--resize` | `-rz`| Resize input frames (WxH) | None |
-| `--seed` | n.a. | RNG seed | `SEED`=0 |
-
-The value of these arguments, incuding exposure times for both RGB and SPAD frames, are saved after execution on a `metadata.json` file in the same output directory.
+## Aditional sensor options
 
 ### Preprocessing Options <!-- omit in toc -->
 
@@ -198,6 +184,83 @@ You can preprocess the input RGB frames before simulation to mimic specific sens
 
 - **Resize** (`--resize WxH`): Resizes the input video frames to a specific resolution (e.g., `320x240`). This is useful for simulating lower-resolution sensors or speeding up the optical flow computation.
 - **Bit Quantization** (`--quantize_bits N`): Reduces the color depth of the RGB frames to N bits per channel (e.g., `--quantize_bits 4` results in $2^4=16$ levels per channel). This simulates hardware with limited bit-depth or ADC precision.
+
+### RGB Sensor Degradation Model
+
+Before simulating the SPAD acquisition process, the simulator can optionally apply
+sensor-level degradations to the extracted RGB frames. This models the fact that
+the RGB video itself is acquired by a *real, imperfect imaging sensor*.
+
+These degradations are applied **before optical flow and SPAD simulation** and are
+implemented in a modular way through a Pyxel-based backend.
+
+**1. Gaussian Blur (Optical PSF)**
+
+A Gaussian blur can be applied to RGB frames to emulate:
+- Lens defocus
+- Optical aberrations
+- Finite point-spread function (PSF) of the imaging system
+
+This is implemented using Pyxel's PSF utilities and controlled via:
+
+- `--enable_pyxel`
+- `--pyxel_sigma`
+
+The blur is applied independently per color channel.
+
+**2. Photon Shot Noise (RGB Sensor)**
+
+Photon arrival at a pixel follows Poisson statistics even for conventional RGB sensors.
+When enabled, the simulator perturbs RGB intensities using Poisson-distributed noise,
+with the expected number of photons proportional to pixel brightness.
+
+This models:
+- Low-light RGB acquisition
+- Signal-dependent noise
+
+Controlled via:
+- `--enable_photon_noise`
+- `--rgb_photons`
+
+**3. Dark Current (RGB Sensor)**
+
+Dark current corresponds to thermally generated electrons that appear even in the
+absence of light. When enabled, a constant-rate Poisson process is added to each
+pixel before SPAD simulation.
+
+This is conceptually different from SPAD dark counts and models noise already present
+in the RGB measurement.
+
+Controlled via:
+- `--rgb_dark_rate`
+
+## Script input parameters
+
+A number of command-line arguments can be used when running the `spad_emulator.py` script. 
+
+| Argument                | Short  | Description                                    | Default                      |
+| ----------------------- | ------ | ---------------------------------------------- | ---------------------------- |
+| `--output_dir`          | `-o`   | Output directory                               | `\output_dir`                |
+| `--rgb_fps`             | `-f`   | Frame extraction rate                          | `DEFAULT_FPS`=30             |
+| `--max_frames`          | `-m`   | Limit RGB frames                               | None                         |
+| `--spad_rate`           | `-sf`  | SPAD frame rate                                | `SPAD_FPS`=100               |
+| `--rgb_photons`         | `-p`   | Photons per RGB exposure at intensity=1        | `PHOTONS_PER_PX`=1000        |
+| `--quantum_efficiency`  | `-qe`  | Quantum efficiency                             | `SPAD_QE`=0.5                |
+| `--include_dcr`         | `-id`  | Enable dark counts?                            | `INCLUDE_DCR`=False          |
+| `--dcr`                 | `-d`   | Dark counts per second                         | `SPAD_DCR`=100               |
+| `--detection_threshold` | `-dt`  | Photon threshold                               | `DETECTION_THRESHOLD`=1      |
+| `--optical_flow_method` | `-ofm` | Optical flow method                            | `OPTFLWO_METHOD`=`farneback` |
+| `--save_rgb`            | `-s`   | Save extracted RGB                             | `SAVE_RGB`=False             |
+| `--quantize_bits`       | `-qb`  | Quantize RGB to N bits/channel                 | None                         |
+| `--resize`              | `-rz`  | Resize input frames (WxH)                      | None                         |
+| `--seed`                | n.a.   | RNG seed                                       | `SEED`=0                     |
+| `--enable_pyxel`        | n.a.   | Enable Pyxel-based Gaussian blur on RGB frames | False                        |
+| `--pyxel_sigma`         | n.a.   | Gaussian blur sigma (PSF width)                | 1.5                          |
+| `--enable_photon_noise` | n.a.   | Enable photon shot noise on RGB frames         | False                        |
+| `--rgb_photons`         | `-p`   | Photons per RGB exposure at full intensity     | 1000                         |
+| `--rgb_dark_rate`       | n.a.   | RGB sensor dark current (e⁻/s/pixel)           | 5.0                          |
+
+The value of these arguments, incuding exposure times for both RGB and SPAD frames, are saved after execution on a `metadata.json` file in the same output directory.
 
 ## Example 
 
@@ -226,11 +289,11 @@ These numbers help verify if the photon-count scaling (brightness-to-photon mapp
 
 ### Troubleshooting with the diagnostics <!-- omit in toc -->
 
-| Problem | Symptoms | Potential fix | 
-|---------|----------|---------------|
-| Frames to dark (mostly zeros) | $$\lambda_{signal}\lt 0.02$$, & $$P(x=1)\lt 5\% $$ | Increase `rgb_photons` or decrease `spad_rate` | 
-| Frames too bright (mostly ones) | $$\lambda\gt 0.5$$, & $$P(x=1)\gt 40\% $$ | Decrease `rgb_photons` or increase `spad_rate` |
-| Dark noise dominates |$$\lambda_{dark}\simeq \lambda_{signal}$$ | increase `spad_rate` | 
+| Problem                         | Symptoms                                           | Potential fix                                  |
+| ------------------------------- | -------------------------------------------------- | ---------------------------------------------- |
+| Frames to dark (mostly zeros)   | $$\lambda_{signal}\lt 0.02$$, & $$P(x=1)\lt 5\% $$ | Increase `rgb_photons` or decrease `spad_rate` |
+| Frames too bright (mostly ones) | $$\lambda\gt 0.5$$, & $$P(x=1)\gt 40\% $$          | Decrease `rgb_photons` or increase `spad_rate` |
+| Dark noise dominates            | $$\lambda_{dark}\simeq \lambda_{signal}$$          | increase `spad_rate`                           |
 
 ## References
 - [[1]](https://arxiv.org/abs/2510.10597) Fast Vision in the Dark: A Case for Single-Photon Imaging in Planetary Navigation

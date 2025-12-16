@@ -21,3 +21,5 @@ __pycache__/
 # testing subfolders
 /testing/rgb_frames/
 /testing/spad_frames/
+/outputs/
+/data/

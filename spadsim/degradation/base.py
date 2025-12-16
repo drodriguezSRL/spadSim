@@ -3,7 +3,7 @@ import numpy as np
 
 class ImageDegradationModel(ABC):
     """
-    common interface for image degradation models
+    common interface for eventual image degradation models avoiding pyxel dependencies
     """
 
     @abstractmethod
