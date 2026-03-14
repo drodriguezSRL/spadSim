@@ -131,10 +131,10 @@ The arrival of photons at a single SPAD pixel can be modeled by a **Poisson dist
 ```math
 P(x=k) = \frac{\lambda^k e^{-\lambda}}{k!}.
 ```
-$$\lambda$$ defines the expected number of photons and mathematically is defined by the photon flux, $$\phi$$, the quantum efficiency of the SPAD sensor, $$\eta$$ (`SPAD_QE` in the script, with a default value of `0.5`), and the exposure time $$t_{spad}$$:
+$$\lambda$$ defines the expected number of photons and mathematically is defined by the photon flux, $$\phi$$, the quantum efficiency of the SPAD sensor, $$\eta$$ (`SPAD_QE` in the script, with a default value of `0.5`), and the exposure time, $$t_{spad}$$:
 
 ```math
-\lambda_{signal} =  \phi \eta t_{spad} = i(x,y)\cdot \text{rgb-photons}\cdot \eta \cdot \frac{t_{spad}}{t_{rgb}}.
+\lambda_{signal} =  \phi \cdot \eta \cdot t_{spad} = i(x,y)\cdot \text{rgb-photons}\cdot \eta \cdot \frac{t_{spad}}{t_{rgb}}.
 ```
 
 An additional effect due to dark counts (false detections of photons due to thermal noise) can be included by computing:
@@ -165,7 +165,7 @@ For every pixel and every SPAD frame, the number of actual striking photons is d
 
 ### 4. Binary Detection (Thresholding)
 
-SPADs are single-photon sensitive, which means they only need to detect a single photon to trigger an avalanche in the semiconductor and be registered. 
+SPADs are single-photon sensitive, which means they only need to detect a single photon to trigger an avalanche in the semiconductor and be digitally registered. 
 
 A SPAD pixel outputs, therefore, a value of 1 if $$n\geqslant 1$$ and a value of 0 otherwise.
 
