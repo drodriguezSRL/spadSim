@@ -2,11 +2,12 @@
 
 """spad_emulator.py
 
-Simulate binary SPAD frames from an input RGB video using optical-flow interpolation
+Simulate binary SPAD frames from an input RGB video or directory of RGB images using optical-flow interpolation
 and a Poisson photon detection model.
 
-Usage (example):
+Usage (examples):
     python spad_emulator.py input.mp4 --output_dir output_spad --rgb_fps 30 
+    python spad_emulator.py /path/to/rgb_images --output_dir output_spad --rgb_fps 30
 
 Dependencies:
     - numpy
@@ -15,7 +16,7 @@ Dependencies:
     - tqdm
 
 The script will:
-  1. Extract RGB frames from the input video at `rgb_fps` (optional to keep them).
+  1. Load RGB frames from the input video or directory at `rgb_fps` (optional to keep them).
   2. For each consecutive RGB image pair, compute Farneback optical flow and
      generate N_spad = round(spad_rate / rgb_fps) SPAD binary frames by
      motion-compensated warping + linear blending at intermediate time fractions.
@@ -26,7 +27,7 @@ The script will:
 
 To-implement next:
 [x] implement export RGB frames
-[] save_rgb flag 
+[x] save_rgb flag 
 [] crop RGB or SPAD to the right size already
 [] if no rgb_fps input, instead of 30 used video's recorded fps 
 [x] implement optical flow 
@@ -35,12 +36,14 @@ To-implement next:
 [x] diagnostics and metadata
 [] write README
 [] improve photon flux estimation
+[x] support input as directory of RGB images
 """
 
 import cv2
 import json
 import argparse
 import numpy as np
+import shutil
 from pathlib import Path
 from PIL import Image
 from tqdm import tqdm
@@ -223,6 +226,36 @@ def extract_frames_from_video(
     # returns number of extracted frames and their paths
     return extracted, out_paths 
 
+def load_frames_from_directory(
+        dir_path: str,
+        max_frames: Optional[int] = None
+        ) -> Tuple[int, list]:
+    """
+    Load RGB frames from a directory of PNG images.
+
+    Parameters:
+    - dir_path (str): Path to the directory containing RGB images.
+    - max_frames (Optional[int]): Optional maximum number of frames to load.
+
+    Returns:
+    - A tuple containing the number of loaded frames and a list of their file paths.
+    """
+    dir_path = Path(dir_path)
+    if not dir_path.is_dir():
+        raise RuntimeError(f"Input directory {dir_path} does not exist or is not a directory.")
+    
+    # Find all PNG files and sort them
+    png_files = sorted(dir_path.glob("*.png"))
+    if not png_files:
+        raise RuntimeError(f"No PNG files found in directory {dir_path}.")
+    
+    # Limit to max_frames if specified
+    if max_frames is not None:
+        png_files = png_files[:max_frames]
+    
+    num_frames = len(png_files)
+    return num_frames, png_files 
+
 def generate_spad_sequence_from_pair(
         imgA_gray: np.ndarray,
         imgB_gray: np.ndarray,
@@ -342,11 +375,11 @@ def generate_spad_sequence_from_pair(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Simulate binary SPAD frames from an RGB video.")
-    parser.add_argument("input_video", type=str, help="Path to the input RGB video file.")
+    parser = argparse.ArgumentParser(description="Simulate binary SPAD frames from an RGB video or directory of RGB images.")
+    parser.add_argument("input", type=str, help="Path to the input RGB video file or directory containing RGB images.")
     parser.add_argument("--output_dir", "-o", type=str, default="/output_dir", help="Path to the output directory for frames and metadata.")
-    parser.add_argument("--rgb_fps", "-f", type=float, default=DEFAULT_FPS, help="Target FPS for RGB frame extraction (Hz).")
-    parser.add_argument("--max_frames", "-m", type=int, default=None, help="Maximum number of RGB frames to extract (for testing).")
+    parser.add_argument("--rgb_fps", "-f", type=float, default=DEFAULT_FPS, help="Target FPS for RGB frame extraction (Hz). For image directories, this sets the assumed frame rate.")
+    parser.add_argument("--max_frames", "-m", type=int, default=None, help="Maximum number of RGB frames to extract/process (for testing).")
     parser.add_argument("--spad_rate", "-sf", type=float, default=SPAD_FPS, help="SPAD frame rate (Hz)")
     parser.add_argument("--rgb_photons", "-p", type=float, default=PHOTONS_PER_PX, help="Number of photons per pixel for one RGB frame when the normalized pixel intensity is maximum (i = 1).")
     parser.add_argument("--quantum_efficiency", "-qe", type=float, default=SPAD_QE, help="Quantum efficiency (0..1)")
@@ -367,17 +400,40 @@ def main():
     spad_dir = Path(out_dir) / "spad_frames"
     ensure_dir(spad_dir)
 
-    # Extract RGB frames from input video
-    print('⏳Extracting RGB frames from video...')
-    num_frames, rgb_paths = extract_frames_from_video(
-        video_path=args.input_video,
-        out_dir=rgb_dir,
-        target_fps= args.rgb_fps,
-        max_frames = args.max_frames
-    )
+    input_path = Path(args.input)
+    if input_path.is_file():
+        # Input is a video file
+        print('⏳Extracting RGB frames from video...')
+        num_frames, rgb_paths = extract_frames_from_video(
+            video_path=str(input_path),
+            out_dir=rgb_dir,
+            target_fps= args.rgb_fps,
+            max_frames = args.max_frames
+        )
+        input_type = 'video'
+        input_source = str(input_path)
+    elif input_path.is_dir():
+        # Input is a directory of images
+        print('⏳Loading RGB frames from directory...')
+        num_frames, rgb_paths = load_frames_from_directory(
+            dir_path=str(input_path),
+            max_frames=args.max_frames
+        )
+        if args.save_rgb:
+            # Copy images to rgb_dir
+            for i, src_path in enumerate(rgb_paths):
+                dst_path = rgb_dir / f"frame_{i:0{FILENAME_PAD}d}.png"
+                import shutil
+                shutil.copy2(src_path, dst_path)
+                rgb_paths[i] = dst_path  # Update to point to copied location
+        input_type = 'directory'
+        input_source = str(input_path)
+    else:
+        raise RuntimeError(f"Input {args.input} is neither a valid file nor directory.")
+
     if num_frames < 2:
-        raise RuntimeError(f"At least 2 extracted RGB frames are required to generate interpolared SPAD frames.")
-    print(f'✅ Extracted {num_frames} frames to {rgb_dir}')
+        raise RuntimeError(f"At least 2 RGB frames are required to generate interpolated SPAD frames.")
+    print(f'✅ Loaded {num_frames} frames')
 
     # Compute timing parameters
     rgb_fps = float(args.rgb_fps)
@@ -398,7 +454,8 @@ def main():
 
     # Prepare metadata
     metadata = {
-        'input_video': args.input_video,
+        'input_type': input_type,
+        'input_source': input_source,
         'rgb_fps': rgb_fps,
         'spad_rate': spad_fps,
         't_rgb': t_rgb,

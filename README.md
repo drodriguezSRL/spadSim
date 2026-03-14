@@ -39,6 +39,11 @@ pip install numpy opencv-python pillow tqdm
 python ./scripts/spad_emulator.py ./testing/demo.mp4 --output_dir testing
 ```
 
+You can also run the script using a directory of pre-extracted RGB frames:
+```
+python ./scripts/spad_emulator.py ./testing/rgb_frames --output_dir testing
+```
+
 ### 4. Explore the results <!-- omit in toc -->
 Inside `testing/` you will find:
 
@@ -68,7 +73,7 @@ A SPAD camera operates differently from conventional CMOS/CCD imaging sensors. S
 
 This simulator emulates SPAD imaging by:
 
-1. Extracting RGB frames from the input video 
+1. Extracting RGB frames from an input video or a loading already exsiting RGB images from a directory
 2. Estimating the photon flux in the image  
 3. Interpolating motion between RGB frames using optical flow  
 4. Simulating Poisson photon arrivals  
@@ -87,14 +92,14 @@ i(x,y) = I(x,y) / 255
 And then defining a high-level, user-defined parameter called `rgb_photons` that represents how many signal photons are collected by a single pixel during a full RGB exposure when that pixel is fully saturated (i.e., `i=1` or `I=255`). This way the user can control and define the overall brightness of the scene. The default value for this parameter is set as `PHOTONS_PER_PX = 1000`.
 
 >[!IMPORTANT]
-> This is a huge simplification, heavily dependent on the light sensitivity of the RGB camera used to record the input video. Scene features that aren't captured by the RGB camera (e.g., clipped shadows and highlights) won't show up in the binary frames, even if, in reality, a SPAD camera may be capable of resolving those same features due to its enhanced sensitivity. Same will happen to image artifacts, such as motion blur. Anything affecting the original frames will invariably affect the generated SPAD images.
+> This is a huge simplification, heavily dependent on the light sensitivity of the RGB camera used to record the input source. Scene features that aren't captured by the RGB camera (e.g., clipped shadows and highlights) won't show up in the binary frames, even if, in reality, a SPAD camera may be capable of resolving those same features due to its enhanced sensitivity. Same will happen to image artifacts, such as motion blur. Anything affecting the original frames will invariably affect the generated SPAD images.
 
 The maximum photon flux is then defined by:
 
 ```math
 \phi_{max} = \frac{\text{rgb-photons}}{t_{rgb}},
 ```
-where $$t_{rgb}$$ is the exposure time per frame of the input video. 
+where $$t_{rgb}$$ is the exposure time per frame of the input source (video or extracted frames). 
 
 Given $$i(x,y)$$ and $$\phi_{max}$$, the photon flux per pixel (photons/sec) can be computed by:
 
@@ -171,12 +176,16 @@ A SPAD pixel outputs, therefore, a value of 1 if $$n\geqslant 1$$ and a value of
 
 ## Script input parameters
 
-A number of command-line arguments can be used when running the `spad_emulator.py` script. 
+A number of command-line arguments can be used when running the `spad_emulator.py` script. The first (positional) argument is the input source, which can be either:
+
+- A path to an RGB video file (e.g. `input.mp4`)
+- A path to a directory containing RGB PNG images (e.g. `./rgb_frames/`)
 
 | Argument | Short | Description | Default |
 |----------|-------|-------------|---------|
+| `input` | n.a. | Input video file or directory of RGB PNG images | n/a |
 | `--output_dir` | `-o` | Output directory | `\output_dir` |
-| `--rgb_fps` | `-f` | Frame extraction rate | `DEFAULT_FPS`=30 |
+| `--rgb_fps` | `-f` | Frame extraction rate / assumed input frame rate | `DEFAULT_FPS`=30 |
 | `--max_frames` | `-m` | Limit RGB frames | None |
 | `--spad_rate` | `-sf` | SPAD frame rate | `SPAD_FPS`=100 |
 | `--rgb_photons` | `-p` | Photons per RGB exposure at intensity=1 | `PHOTONS_PER_PX`=1000 |
@@ -184,16 +193,16 @@ A number of command-line arguments can be used when running the `spad_emulator.p
 | `--include_dcr` | `-id`| Enable dark counts? | `INCLUDE_DCR`=False |
 | `--dcr` | `-d` | Dark counts per second | `SPAD_DCR`=100 |
 | `--detection_threshold` | `-dt` | Photon threshold | `DETECTION_THRESHOLD`=1 |
-| `--optical_flow_method` | `-ofm`| Optical flow method | `OPTFLWO_METHOD`=`farneback`|
-| `--save_rgb` | `-s`| Save extracted RGB | `SAVE_RGB`=False|
+| `--optical_flow_method` | `-ofm`| Optical flow method | `OPTFLOW_METHOD`=`farneback`|
+| `--save_rgb` | `-s`| Save extracted RGB (copy from input directory) | `SAVE_RGB`=True|
 | `--seed` | n.a. | RNG seed | `SEED`=0 |
 
-The value of these arguments, incuding exposure times for both RGB and SPAD frames, are saved after execution on a `metadata.json` file in the same output directory.
+The value of these arguments, including exposure times for both RGB and SPAD frames, are saved after execution in a `metadata.json` file in the same output directory.
 
 ## Example 
 
 ```
-python spad_emulator.py input.mp4 --output_dir spad_frames --spad_rate 10000 --include_dcr True --dcr 150
+python spad_emulator.py input.mp4 --output_dir ./testing --spad_rate 10000 --include_dcr 1 --dcr 150
 ```
 
 ## Diagnostics
@@ -242,11 +251,11 @@ These numbers help verify if the photon-count scaling (brightness-to-photon mapp
 - [ ] afterpulsing  
 - [ ] fill-factor models  
 - [ ] bit-packed outputs
-- [ ] save_rgb flag 
+- [x] save_rgb flag 
 - [ ] crop SPADs to match resolution
 - [ ] no rgb_fps input, use video's own fps not default
 - [ ] implement radiometric model for photon flux estimation instead of rgb_photons  
-- [ ] input individual imgs instead of video 
+- [x] support input as directory of RGB images
 
 
 

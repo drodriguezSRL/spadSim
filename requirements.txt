@@ -1,0 +1,5 @@
+colorama==0.4.6
+numpy==2.4.3
+opencv-python==4.13.0.92
+pillow==12.1.1
+tqdm==4.67.3
