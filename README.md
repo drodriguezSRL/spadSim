@@ -6,6 +6,8 @@ This is a small weekend(ish) hack where I've built a simulator that converts ord
 
 ![Image](demo.png)
 
+>📢**Update:** Now you can also input a directory containing already extracted or existing RGB images. 
+
 ## Contents <!-- omit in toc -->
 - [Quick setup](#quick-setup)
 - [What the simulator does](#what-the-simulator-does)
