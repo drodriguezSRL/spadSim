@@ -87,7 +87,7 @@ i(x,y) = I(x,y) / 255
 And then defining a high-level, user-defined parameter called `rgb_photons` that represents how many signal photons are collected by a single pixel during a full RGB exposure when that pixel is fully saturated (i.e., `i=1` or `I=255`). This way the user can control and define the overall brightness of the scene. The default value for this parameter is set as `PHOTONS_PER_PX = 1000`.
 
 >[!IMPORTANT]
-> This is a simplification dependent on the light sensitivity of the RGB camera used to record the input video. Scene features that aren't captured by the RGB camera (e.g., clipped shadows and highlights) won't show up in the binary frames, even if, in reality, a SPAD camera may be capable of resolving those same features due to its enhanced sensitivity. 
+> This is a huge simplification, heavily dependent on the light sensitivity of the RGB camera used to record the input video. Scene features that aren't captured by the RGB camera (e.g., clipped shadows and highlights) won't show up in the binary frames, even if, in reality, a SPAD camera may be capable of resolving those same features due to its enhanced sensitivity. Same will happen to image artifacts, such as motion blur. Anything affecting the original frames will invariably affect the generated SPAD images.
 
 The maximum photon flux is then defined by:
 
@@ -113,7 +113,7 @@ The creation of intermediate frames is done in two steps.
 2. Perform motion-aware image interpolation by warping a version of the original images shifted along the motion vectors by a fraction `alpha` of the total movement
     - `alpha` = 0 -> output = original frame
     - `alpha` = 1 -> output = next frame according to the flow field
-    - `alpha` = 0.5 -> halfwar between the two frames (motion-interpolated)
+    - `alpha` = 0.5 -> halfway between the two frames (motion-interpolated)
 
 `alpha` is computed based on the ratio of SPAD-to-RGB frames. Warping is done both ways, from imgA -> imgB and vice versa (reverse flow, in this case warped by `alpha-1`). Both warped versions are then blended to yield a spatially coherent intensity field per SPAD frame time. 
 
