@@ -1,6 +1,6 @@
 # spadSim - Simulating and digitizing SPAD frames <!-- omit in toc -->
 
-This is a small weekend(ish) hack where I've built tools to simulate and digitize SPAD-style binary photon frames. The simulator converts ordinary RGB videos into realistic 1-bit SPAD frames using optical flow and poissonian statistics. The digitization tool converts sequences of 1-bit SPAD frames into higher bit-depth images by summing detections. There's plenty of room for improvement (see [this section](#potential-future-implementations) as a reference) but works nicely as is. See and test for yourself 👇
+This is a small weekend hack (now turned into a multi-week project) where I've built a couple of tools to simulate and digitize SPAD-style binary photon frames. The simulator converts ordinary RGB videos into realistic 1-bit SPAD frames using optical flow and poissonian statistics. The digitization tool converts sequences of 1-bit SPAD frames into higher bit-depth images by summing detections. There's plenty of room for improvement (see [this section](#potential-future-implementations) as a reference) but works nicely as is. See and test for yourself 👇
 
 ![Image](example.gif)
 
