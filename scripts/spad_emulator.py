@@ -66,6 +66,7 @@ SAVE_RGB = True
 BITPACK = False
 DIAGNOSTIC = True # compile a diagnostic report 
 SEED = 0 # random seed (0 = random)
+DURATION = 1.0 # duration in seconds for single image input (default: 1.0s)
 
 # UTILS
 def ensure_dir(p: str):
@@ -391,7 +392,7 @@ def main():
     parser.add_argument("--optical_flow_method", '-ofm', type=str, default=OPTFLOW_METHOD, choices=['farneback'], help="Optical flow method")
     parser.add_argument("--save_rgb", "-s", type=bool, default=SAVE_RGB, choices=[True,False], help="Save extracted RGB frames (True/False)")
     parser.add_argument("--seed", type=int, default=SEED, help="Random seed (0 means random)")
-    parser.add_argument("--duration", type=float, default=1.0, help="Duration in seconds for single image input (default: 1.0)")
+    parser.add_argument("--duration", type=float, default=DURATION, help="Duration in seconds for single image input (default: 1.0)")
 
     args = parser.parse_args()
 
