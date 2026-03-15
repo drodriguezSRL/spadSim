@@ -2,12 +2,12 @@
 
 """spad_emulator.py
 
-Simulate binary SPAD frames from an input RGB video or directory of RGB images using optical-flow interpolation
-and a Poisson photon detection model.
+Simulate binary SPAD frames from an input RGB video, directory of RGB images, or single RGB image using optical-flow interpolation and a Poisson photon detection model.
 
 Usage (examples):
     python spad_emulator.py input.mp4 --output_dir output_spad --rgb_fps 30 
     python spad_emulator.py /path/to/rgb_images --output_dir output_spad --rgb_fps 30
+    python spad_emulator.py single_image.png --output_dir output_spad --spad_rate 100 --duration 2.0
 
 Dependencies:
     - numpy
@@ -20,9 +20,10 @@ The script will:
   2. For each consecutive RGB image pair, compute Farneback optical flow and
      generate N_spad = round(spad_rate / rgb_fps) SPAD binary frames by
      motion-compensated warping + linear blending at intermediate time fractions.
-  3. Convert blended intensity to expected photon counts using P_rgb and QE,
+  3. For a single RGB image, generate SPAD frames by repeating the photon simulation for the specified duration.
+  4. Convert blended intensity to expected photon counts using P_rgb and QE,
      add optional dark counts, sample Poisson counts and threshold to binary.
-  4. Save all binary SPAD frames as single-channel PNGs (0 or 255) into a single
+  5. Save all binary SPAD frames as single-channel PNGs (0 or 255) into a single
      folder, and save metadata.json and diagnostics.json.
 
 To-implement next:
@@ -37,6 +38,7 @@ To-implement next:
 [] write README
 [] improve photon flux estimation
 [x] support input as directory of RGB images
+[x] support single RGB image input
 """
 
 import cv2
@@ -72,9 +74,9 @@ def ensure_dir(p: str):
     """
     Path(p).mkdir(parents=True, exist_ok=True)
 
-def load_png_gray(p: str) -> np.ndarray:
+def load_image_gray(p: str) -> np.ndarray:
     """
-    Returns the grayscale (0-255) Numpy array of a PNG image
+    Returns the grayscale (0-255) Numpy array of an image (PNG, JPG, etc.)
     """
     img = Image.open(p).convert('L') # 'L' luminance, 8bit grayscale
     return np.array(img, dtype=np.float32) # converts from PIL image object to numpy array. float32 is needed for optical flow.
@@ -375,8 +377,8 @@ def generate_spad_sequence_from_pair(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Simulate binary SPAD frames from an RGB video or directory of RGB images.")
-    parser.add_argument("input", type=str, help="Path to the input RGB video file or directory containing RGB images.")
+    parser = argparse.ArgumentParser(description="Simulate binary SPAD frames from an RGB video, directory of RGB images, or single RGB image.")
+    parser.add_argument("input", type=str, help="Path to the input RGB video file, directory containing RGB images, or single RGB image file.")
     parser.add_argument("--output_dir", "-o", type=str, default="/output_dir", help="Path to the output directory for frames and metadata.")
     parser.add_argument("--rgb_fps", "-f", type=float, default=DEFAULT_FPS, help="Target FPS for RGB frame extraction (Hz). For image directories, this sets the assumed frame rate.")
     parser.add_argument("--max_frames", "-m", type=int, default=None, help="Maximum number of RGB frames to extract/process (for testing).")
@@ -389,6 +391,7 @@ def main():
     parser.add_argument("--optical_flow_method", '-ofm', type=str, default=OPTFLOW_METHOD, choices=['farneback'], help="Optical flow method")
     parser.add_argument("--save_rgb", "-s", type=bool, default=SAVE_RGB, choices=[True,False], help="Save extracted RGB frames (True/False)")
     parser.add_argument("--seed", type=int, default=SEED, help="Random seed (0 means random)")
+    parser.add_argument("--duration", type=float, default=1.0, help="Duration in seconds for single image input (default: 1.0)")
 
     args = parser.parse_args()
 
@@ -401,17 +404,30 @@ def main():
     ensure_dir(spad_dir)
 
     input_path = Path(args.input)
+    video_extensions = {'.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv', '.webm'}
     if input_path.is_file():
-        # Input is a video file
-        print('⏳Extracting RGB frames from video...')
-        num_frames, rgb_paths = extract_frames_from_video(
-            video_path=str(input_path),
-            out_dir=rgb_dir,
-            target_fps= args.rgb_fps,
-            max_frames = args.max_frames
-        )
-        input_type = 'video'
-        input_source = str(input_path)
+        if input_path.suffix.lower() in video_extensions:
+            # Input is a video file
+            print('⏳Extracting RGB frames from video...')
+            num_frames, rgb_paths = extract_frames_from_video(
+                video_path=str(input_path),
+                out_dir=rgb_dir,
+                target_fps= args.rgb_fps,
+                max_frames = args.max_frames
+            )
+            input_type = 'video'
+            input_source = str(input_path)
+        else:
+            # Input is a single image file
+            print('⏳Loading single RGB image...')
+            num_frames = 1
+            rgb_paths = [input_path]
+            if args.save_rgb:
+                dst_path = rgb_dir / "frame_000000.png"
+                shutil.copy2(input_path, dst_path)
+                rgb_paths[0] = dst_path
+            input_type = 'single_image'
+            input_source = str(input_path)
     elif input_path.is_dir():
         # Input is a directory of images
         print('⏳Loading RGB frames from directory...')
@@ -423,7 +439,6 @@ def main():
             # Copy images to rgb_dir
             for i, src_path in enumerate(rgb_paths):
                 dst_path = rgb_dir / f"frame_{i:0{FILENAME_PAD}d}.png"
-                import shutil
                 shutil.copy2(src_path, dst_path)
                 rgb_paths[i] = dst_path  # Update to point to copied location
         input_type = 'directory'
@@ -431,7 +446,7 @@ def main():
     else:
         raise RuntimeError(f"Input {args.input} is neither a valid file nor directory.")
 
-    if num_frames < 2:
+    if input_type != 'single_image' and num_frames < 2:
         raise RuntimeError(f"At least 2 RGB frames are required to generate interpolated SPAD frames.")
     print(f'✅ Loaded {num_frames} frames')
 
@@ -441,10 +456,16 @@ def main():
     t_rgb = 1.0/rgb_fps 
     t_spad = 1.0/spad_fps
 
-    n_spad_per_pair = int(round(t_rgb/t_spad)) # number of SPAD frames pair RGB pair (approx)
-    if n_spad_per_pair < 1:
-        n_spad_per_pair = 1
-    print(f"[INFO] SPAD frames per RGB interval (approx): {n_spad_per_pair}")
+    if input_type == 'single_image':
+        n_spad_total = int(round(spad_fps * args.duration))
+        if n_spad_total < 1:
+            n_spad_total = 1
+        print(f"[INFO] Total SPAD frames for single image: {n_spad_total}")
+    else:
+        n_spad_per_pair = int(round(t_rgb/t_spad)) # number of SPAD frames pair RGB pair (approx)
+        if n_spad_per_pair < 1:
+            n_spad_per_pair = 1
+        print(f"[INFO] SPAD frames per RGB interval (approx): {n_spad_per_pair}")
 
     # Generate random number of photon arrivals per pixel
     if args.seed == 0:
@@ -456,11 +477,12 @@ def main():
     metadata = {
         'input_type': input_type,
         'input_source': input_source,
-        'rgb_fps': rgb_fps,
+        'rgb_fps': rgb_fps if input_type != 'single_image' else None,
         'spad_rate': spad_fps,
-        't_rgb': t_rgb,
+        't_rgb': t_rgb if input_type != 'single_image' else None,
         't_spad': t_spad,
-        'n_spad_per_pair': n_spad_per_pair,
+        'n_spad_per_pair': n_spad_per_pair if input_type != 'single_image' else None,
+        'duration': args.duration if input_type == 'single_image' else None,
         'rgb_photons': args.rgb_photons,
         'QE': args.quantum_efficiency,
         'include_dark_counts': bool(args.include_dcr),
@@ -474,39 +496,63 @@ def main():
     # Generate SPAD frames from RGB pairs
     global_idx = 0
     all_diagnostics = []
-    print('📸 Processing RGB pairs and generating SPAD frames...')
-    for k in tqdm(range(num_frames - 1), desc='Processing RGB pairs'):
-        # get two consecutive RGB frames
-        pathA = rgb_paths[k]
-        pathB = rgb_paths[k + 1]
-
-        # load them in grayscale
-        grayA = load_png_gray(pathA)
-        grayB = load_png_gray(pathB)
-
-        # compute flow from A to B
-        flow = compute_farneback(grayA, grayB)
-
-        # generate spad frames for this pair
+    if input_type == 'single_image':
+        print('📸 Generating SPAD frames from single image...')
+        gray = load_image_gray(rgb_paths[0])
+        h, w = gray.shape
+        flow = np.zeros((h, w, 2), dtype=np.float32)
         next_idx, diag = generate_spad_sequence_from_pair(
-            imgA_gray=grayA, 
-            imgB_gray=grayB, 
+            imgA_gray=gray,
+            imgB_gray=gray,
             flow=flow,
-            n_spad_per_pair=n_spad_per_pair,
-            rgb_photons=args.rgb_photons, 
+            n_spad_per_pair=n_spad_total,
+            rgb_photons=args.rgb_photons,
             QE=args.quantum_efficiency,
-            t_spad=t_spad, 
-            t_rgb=t_rgb,
-            include_dcr=bool(args.include_dcr), 
+            t_spad=t_spad,
+            t_rgb=1.0,  # dummy
+            include_dcr=bool(args.include_dcr),
             dcr=args.dcr,
             detection_threshold=args.detection_threshold,
-            output_dir=spad_dir, 
+            output_dir=spad_dir,
             global_index_start=global_idx,
             rng=rng
         )
-
         global_idx = next_idx
-        all_diagnostics.append({'pair_index': k, **diag})
+        all_diagnostics.append({'pair_index': 0, **diag})
+    else:
+        print('📸 Processing RGB pairs and generating SPAD frames...')
+        for k in tqdm(range(num_frames - 1), desc='Processing RGB pairs'):
+            # get two consecutive RGB frames
+            pathA = rgb_paths[k]
+            pathB = rgb_paths[k + 1]
+
+            # load them in grayscale
+            grayA = load_image_gray(pathA)
+            grayB = load_image_gray(pathB)
+
+            # compute flow from A to B
+            flow = compute_farneback(grayA, grayB)
+
+            # generate spad frames for this pair
+            next_idx, diag = generate_spad_sequence_from_pair(
+                imgA_gray=grayA, 
+                imgB_gray=grayB, 
+                flow=flow,
+                n_spad_per_pair=n_spad_per_pair,
+                rgb_photons=args.rgb_photons, 
+                QE=args.quantum_efficiency,
+                t_spad=t_spad, 
+                t_rgb=t_rgb,
+                include_dcr=bool(args.include_dcr), 
+                dcr=args.dcr,
+                detection_threshold=args.detection_threshold,
+                output_dir=spad_dir, 
+                global_index_start=global_idx,
+                rng=rng
+            )
+
+            global_idx = next_idx
+            all_diagnostics.append({'pair_index': k, **diag})
 
     # finalize metadata 
     metadata['total_spad_frames'] = global_idx

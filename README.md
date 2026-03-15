@@ -1,4 +1,4 @@
-# spadSim - Simulating binary SPAD frames from a standard video <!-- omit in toc -->
+# spadSim - Simulating binary SPAD frames from a standard video, directory of images, or single image <!-- omit in toc -->
 
 This is a small weekend(ish) hack where I've built a simulator that converts ordinary RGB videos into realistic SPAD-style binary photon frames using optical flow and poissonian statistics to model photon arrival rates. There's plenty of room for improvement (see [this section](#potential-future-implementations) as a reference) but works nicely as is. See and test for yourself 👇
 
@@ -6,7 +6,11 @@ This is a small weekend(ish) hack where I've built a simulator that converts ord
 
 ![Image](demo.png)
 
->📢**Update:** Now you can also input a directory containing already extracted or existing RGB images. 
+>📢**Updates:** 
+> - (15 Mar 2026) Now you can also input a single RGB image file and generate a given number of SPAD frames based on `--spad_rate` and `--duration`.
+> - (14 Mar 2026) You can also input a directory containing already extracted or existing RGB images. 
+> - (2025-Dec-02) Demo uploaded.
+> - (2025-Nov-30) Repository creation.
 
 ## Contents <!-- omit in toc -->
 - [Quick setup](#quick-setup)
@@ -21,7 +25,6 @@ This is a small weekend(ish) hack where I've built a simulator that converts ord
 - [Diagnostics](#diagnostics)
 - [References](#references)
 - [Licensing](#licensing)
-- [Updates](#updates)
 - [Potential future implementations](#potential-future-implementations)
 
 ## Quick setup
@@ -37,13 +40,20 @@ pip install numpy opencv-python pillow tqdm
 ```
 
 ### 3. Run a quick demo of the simulator <!-- omit in toc -->
+
+Using a **video** as an input:
 ```
 python ./scripts/spad_emulator.py ./testing/demo.mp4 --output_dir testing
 ```
 
-You can also run the script using a directory of pre-extracted RGB frames:
+You can also run the script using a **directory of pre-extracted RGB frames**:
 ```
 python ./scripts/spad_emulator.py ./testing/rgb_frames --output_dir testing
+```
+
+Or using a **single RGB image**:
+```
+python ./scripts/spad_emulator.py ./testing/single_image.png --output_dir testing --spad_rate 100 --duration 2.0
 ```
 
 ### 4. Explore the results <!-- omit in toc -->
@@ -67,17 +77,17 @@ python -m pydoc scripts/spad_emulator
 
 ## What the simulator does
 
-This repository contains `spad_emulator.py`, a script that simulates the acquisition of **binary Single-Photon Avalanche Diode (SPAD)** frames using a standard RGB video as a reference input.
+This repository contains `spad_emulator.py`, a script that simulates the acquisition of **binary Single-Photon Avalanche Diode (SPAD)** frames using a standard RGB video, directory of RGB images, or single RGB image as a reference input.
 
-The SPAD simulator models photon arrivals using poissonian statistics and simulates the ultra-fast frame rates of a SPAD by interpolating motion between the extracted RGB frames using dense optical flow.
+The SPAD simulator models photon arrivals using poissonian statistics and simulates the ultra-fast frame rates of a SPAD by interpolating motion between the extracted RGB frames using dense optical flow (for video/directory inputs), or by generating multiple frames from a single image.
 
 A SPAD camera operates differently from conventional CMOS/CCD imaging sensors. SPADs record binary frames (1-bit per pixel output) based on the detection of a single photon per pixel (0: no photon, 1: photon) at ultra-fast speeds (up to 100kfps, µs-exposure per frame). For more information about SPADs and how they compare to conventional cameras, I encourage you to read [[1]](https://arxiv.org/abs/2510.10597). 
 
 This simulator emulates SPAD imaging by:
 
-1. Extracting RGB frames from an input video or a loading already exsiting RGB images from a directory
+1. Extracting RGB frames from an input video, loading RGB images from a directory, or using a single RGB image
 2. Estimating the photon flux in the image  
-3. Interpolating motion between RGB frames using optical flow  
+3. Interpolating motion between RGB frames using optical flow (for multi-frame inputs) or generating static frames (for single image)
 4. Simulating Poisson photon arrivals  
 5. Thresholding detections to generate a sequence of binary frames  
 
@@ -182,6 +192,7 @@ A number of command-line arguments can be used when running the `spad_emulator.p
 
 - A path to an RGB video file (e.g. `input.mp4`)
 - A path to a directory containing RGB PNG images (e.g. `./rgb_frames/`)
+- A path to a single RGB image file (e.g. `image.png`)
 
 | Argument | Short | Description | Default |
 |----------|-------|-------------|---------|
@@ -198,6 +209,7 @@ A number of command-line arguments can be used when running the `spad_emulator.p
 | `--optical_flow_method` | `-ofm`| Optical flow method | `OPTFLOW_METHOD`=`farneback`|
 | `--save_rgb` | `-s`| Save extracted RGB (copy from input directory) | `SAVE_RGB`=True|
 | `--seed` | n.a. | RNG seed | `SEED`=0 |
+| `--duration` | n.a. | Duration in seconds for single image input | 1.0 |
 
 The value of these arguments, including exposure times for both RGB and SPAD frames, are saved after execution in a `metadata.json` file in the same output directory.
 
@@ -241,10 +253,6 @@ These numbers help verify if the photon-count scaling (brightness-to-photon mapp
 ## Licensing 
 [MIT](LICENSE.txt)
 
-## Updates
-- (2025-Nov-30) Repository creation
-- (2025-Dec-02) Demo uploaded
-  
 ## Potential future implementations
 - [x] record demo
 - [ ] (tbd) test other optical flow methods (e.g., RAFT)  
@@ -258,6 +266,7 @@ These numbers help verify if the photon-count scaling (brightness-to-photon mapp
 - [ ] no rgb_fps input, use video's own fps not default
 - [ ] implement radiometric model for photon flux estimation instead of rgb_photons  
 - [x] support input as directory of RGB images
+- [x] support single RGB image input
 
 
 
