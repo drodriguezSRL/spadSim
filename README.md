@@ -1,12 +1,13 @@
-# spadSim - Simulating binary SPAD frames from a standard video, directory of images, or single image <!-- omit in toc -->
+# spadSim - Simulating and digitizing SPAD frames <!-- omit in toc -->
 
-This is a small weekend(ish) hack where I've built a simulator that converts ordinary RGB videos into realistic SPAD-style binary photon frames using optical flow and poissonian statistics to model photon arrival rates. There's plenty of room for improvement (see [this section](#potential-future-implementations) as a reference) but works nicely as is. See and test for yourself 👇
+This is a small weekend(ish) hack where I've built tools to simulate and digitize SPAD-style binary photon frames. The simulator converts ordinary RGB videos into realistic 1-bit SPAD frames using optical flow and poissonian statistics. The digitization tool converts sequences of 1-bit SPAD frames into higher bit-depth images by summing detections. There's plenty of room for improvement (see [this section](#potential-future-implementations) as a reference) but works nicely as is. See and test for yourself 👇
 
 ![Image](example.gif)
 
 ![Image](demo.png)
 
 >📢**Updates:** 
+> - (15 Mar 2026) Added `spad_digitization.py` script to digitize 1-bit SPAD frames into higher bit-depth images by summing consecutive frames.
 > - (15 Mar 2026) Now you can also input a single RGB image file and generate a given number of SPAD frames based on `--spad_rate` and `--duration`.
 > - (14 Mar 2026) You can also input a directory containing already extracted or existing RGB images. 
 > - (2025-Dec-02) Demo uploaded.
@@ -23,6 +24,7 @@ This is a small weekend(ish) hack where I've built a simulator that converts ord
 - [Script input parameters](#script-input-parameters)
 - [Example](#example)
 - [Diagnostics](#diagnostics)
+- [SPAD Digitization](#spad-digitization)
 - [References](#references)
 - [Licensing](#licensing)
 - [Potential future implementations](#potential-future-implementations)
@@ -246,6 +248,29 @@ These numbers help verify if the photon-count scaling (brightness-to-photon mapp
 | Frames too bright (mostly ones) | $$\lambda\gt 0.5$$, & $$P(x=1)\gt 40\% $$ | Decrease `rgb_photons` or increase `spad_rate` |
 | Dark noise dominates |$$\lambda_{dark}\simeq \lambda_{signal}$$ | increase `spad_rate` | 
 
+## SPAD Digitization
+
+This repository also contains `spad_digitization.py`, a script that digitizes sequences of 1-bit SPAD frames into higher bit-depth images by summing consecutive frames.
+
+The digitization process groups SPAD frames into chunks of size (2^bit_depth - 1) and sums the binary detections pixel-wise to create grayscale images. For example, with bit_depth=8, every 255 SPAD frames are summed to produce an 8-bit image where pixel values range from 0 (no detections) to 255 (all detections).
+
+### Quick digitization setup <!-- omit in toc -->
+
+1. Run the digitization script on a directory of SPAD frames:
+```
+python ./scripts/spad_digitization.py ./testing/spad_frames --output_dir digitized_output --bit_depth 8
+```
+
+### Digitization parameters <!-- omit in toc -->
+
+| Argument | Short | Description | Default |
+|----------|-------|-------------|---------|
+| `input_dir` | n.a. | Input directory with 1-bit SPAD PNGs | n/a |
+| `--output_dir` | `-o` | Output directory for digitized images | `./output_digitized` |
+| `--bit_depth` | `-b` | Target bit depth (e.g., 8) | 8 |
+
+The script saves digitized images as `digitized_XXXXXX.png` and a `metadata.json` with processing details.
+
 ## References
 - [[1]](https://arxiv.org/abs/2510.10597) Fast Vision in the Dark: A Case for Single-Photon Imaging in Planetary Navigation
 - [[2]](https://link.springer.com/chapter/10.1007/3-540-45103-X_50) Two-Frame Motion Estimation Based on Polynomial Expansion
@@ -260,7 +285,7 @@ These numbers help verify if the photon-count scaling (brightness-to-photon mapp
 - [ ] dead time modeling  
 - [ ] afterpulsing  
 - [ ] fill-factor models  
-- [ ] bit-packed outputs
+- [x] bit-packed outputs (digitization script added)
 - [x] save_rgb flag 
 - [ ] crop SPADs to match resolution
 - [ ] no rgb_fps input, use video's own fps not default
