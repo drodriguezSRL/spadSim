@@ -254,6 +254,8 @@ This repository also contains `spad_digitization.py`, a script that digitizes se
 
 The digitization process groups SPAD frames into chunks of size (2^bit_depth - 1) and sums the binary detections pixel-wise to create grayscale images. For example, with bit_depth=8, every 255 SPAD frames are summed to produce an 8-bit image where pixel values range from 0 (no detections) to 255 (all detections).
 
+![Image](digitization.gif)
+
 ### Quick digitization setup <!-- omit in toc -->
 
 1. Run the digitization script on a directory of SPAD frames:
@@ -274,6 +276,7 @@ The script saves digitized images as `digitized_XXXXXX.png` and a `metadata.json
 ## References
 - [[1]](https://arxiv.org/abs/2510.10597) Fast Vision in the Dark: A Case for Single-Photon Imaging in Planetary Navigation
 - [[2]](https://link.springer.com/chapter/10.1007/3-540-45103-X_50) Two-Frame Motion Estimation Based on Polynomial Expansion
+- [[3]](https://cvg.cit.tum.de/data/datasets/4seasons-dataset) 4Seasons Dataset: A Cross-Season Dataset for Multi-Weather SLAM in Autonomous Driving
 
 ## Licensing 
 [MIT](LICENSE.txt)
