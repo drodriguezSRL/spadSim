@@ -30,7 +30,7 @@ To-implement next:
 [x] implement export RGB frames
 [x] save_rgb flag
 [] crop RGB or SPAD to the right size already
-[] if no rgb_fps input, instead of 30 used video's recorded fps
+[x] if no rgb_fps input, instead of 30 used video's recorded fps
 [x] implement optical flow
 [x] implement warping function to interpolate spad frames for each rgb frame based on optical flow
 [x] simulate SPAD frames...
